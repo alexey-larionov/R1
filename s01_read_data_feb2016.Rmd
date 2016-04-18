@@ -1,0 +1,138 @@
+---
+title: "Read data, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: Mar2016
+last updated: 25Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Time stamp
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+# Required libraries
+library(ggplot2)
+
+```
+
+# link_WES_samples_ids_with_GWAS_ids_and_annotations
+
+```{r link_WES_samples_ids_with_GWAS_ids_and_annotations}
+
+# Make text file linking samples IDs in GWAs and WES data
+#load("data/samples_AL09Nov2015.RData")
+#write.table(samples.ids, file="data/samples_ids.txt", quote="", sep="\t")
+
+# Check content of full gwas data
+#load("data/gwas_AL10Jul2014.RData")
+
+```
+
+# read_data
+
+```{r read_data}
+
+covar.df <- read.table("data/covar.txt", sep="\t", header=TRUE, quote="")
+samples.df <- read.table("data/samples_ids.txt", sep="\t", header=TRUE, quote="")
+gt.df <- read.table("data/wecare_feb2016_std_filter_GT_biallelic_add.txt", header=TRUE, row.names=1, sep="\t", quote="")
+gq.df <- read.table("data/wecare_feb2016_std_filter_GQ_biallelic.txt", header=TRUE, row.names=1, sep="\t", quote="")
+dp.df <- read.table("data/wecare_feb2016_std_filter_DP_biallelic.txt", header=TRUE, row.names=1, sep="\t", quote="")
+vv.df <- read.table("data/wecare_feb2016_std_filter_VV_biallelic.txt", header=TRUE, row.names=1, sep="\t", quote="")
+
+demographics.df <- read.table("data/WECARE.Exome.DemographicVariables.txt", sep="\t", header=TRUE, quote="")
+
+```
+
+# check_data
+
+```{r check_data}
+
+dim(covar.df)
+colnames(covar.df)
+str(covar.df)
+gt.df[1:5,1:5]
+
+dim(samples.df)
+colnames(samples.df)
+str(samples.df)
+samples.df[1:5,]
+
+dim(gt.df)
+gt.df[1:5,1:3]
+
+dim(gq.df)
+gq.df[1:5,1:3]
+
+dim(dp.df)
+dp.df[1:5,1:3]
+
+dim(vv.df)
+colnames(vv.df)
+str(vv.df)
+vv.df[1:5,1:3]
+
+```
+
+# explore_phenotypes
+
+```{r explore_phenotypes}
+
+# Inclusion criteria: age at 1st Ds < 55
+hist(covar.df$sub_dx_age) 
+
+ggplot(covar.df, aes(sub_dx_age)) +
+  geom_histogram(binwidth = 5, 
+    colour="black", fill="blue", alpha=0.25) +
+  ggtitle("Age at the 1st diagnosis")
+
+ggplot(covar.df, aes(sub_dx_age)) +
+  geom_histogram(binwidth = 5, colour="black", alpha=0.25) + 
+  aes(fill=as.factor(cc))+
+  ggtitle("Age at the 1st diagnosis in cases and controls")
+
+# Inclusion criteria: 2nd Ds should be 1yr+ later than the 1st Ds
+hist(covar.df$offset, breaks=c(0:8), xaxp=c(0,8,8), right=FALSE)
+hist(demographics.df$offset.x[c(-59, -502,-503,-504,-505)], breaks=c(0:8), xaxp=c(0,8,8), right=FALSE)
+hist(demographics.df$rstime[c(-59, -502,-503,-504,-505)], breaks=c(0:16), xaxp=c(0,16,16), right=FALSE)
+
+ggplot(covar.df, aes(offset)) +
+  geom_histogram(breaks=c(0:8), 
+    colour="black", fill="blue", alpha=0.25)
+
+ggplot(covar.df, aes(offset)) +
+  geom_histogram(breaks=c(0:8), colour="black", alpha=0.25) + 
+  aes(fill=as.factor(cc))
+
+hist(demographics.df$offset.x[c(-59, -502,-503,-504,-505)], breaks=c(0:8), xaxp=c(0,8,8))
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s01_read_data_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```

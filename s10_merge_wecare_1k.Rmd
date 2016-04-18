@@ -1,0 +1,252 @@
+---
+title: "Merge aggregaed wecare feb2016 and 1k"
+author: "AL"
+output: html_document
+---
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+library(dplyr)
+library(VennDiagram)
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+# Read
+load(file="data/s06_aggregate_lof_feb2016.RData")
+load(file="data/s09_aggregate_lof_1k.RData")
+ls()
+
+# Remove irrelevant data
+rm("events.per.gene.wecare.df", "phenotypes.df", "variants.df")
+
+# Check tables
+dim(burden.per.gene.wecare.df)
+colnames(burden.per.gene.wecare.df)
+str(burden.per.gene.wecare.df)
+burden.per.gene.wecare.df[1:5,]
+
+dim(burden.per.gene.1k.df)
+colnames(burden.per.gene.1k.df)
+str(burden.per.gene.1k.df)
+burden.per.gene.1k.df[1:5,]
+
+```
+
+# rename_columns
+
+```{r rename_columns}
+
+colnames(burden.per.gene.wecare.df)
+colnames(burden.per.gene.wecare.df) <- c("gene", "vcf.wes", "gt.wes", "cbc.wes", "ubc.wes", "cfbc.wes", "usbc.wes")
+colnames(burden.per.gene.wecare.df)
+
+colnames(burden.per.gene.1k.df)
+colnames(burden.per.gene.1k.df) <- c("gene", "eur.1k", "all.1k")
+colnames(burden.per.gene.1k.df)
+
+```
+
+# explore_wecare_burdens
+
+```{r explore_wecare_burdens}
+
+hist(burden.per.gene.wecare.df$gt.wes, breaks=seq(0, 3, 0.01))
+
+# Top genes in all wecare
+sum(burden.per.gene.wecare.df$gt.wes > 0.01)
+sum(burden.per.gene.wecare.df$gt.wes > 0.05)
+sum(burden.per.gene.wecare.df$gt.wes > 0.5)
+sum(burden.per.gene.wecare.df$gt.wes > 1)
+
+burden.per.gene.wecare.df %>% 
+  select(gene, gt.wes) %>%
+  filter(gt.wes > 1) %>%
+  arrange(desc(gt.wes))
+
+# Top genes in CBC wecare
+sum(burden.per.gene.wecare.df$cbc.wes > 0.01)
+sum(burden.per.gene.wecare.df$cbc.wes > 0.05)
+sum(burden.per.gene.wecare.df$cbc.wes > 0.5)
+sum(burden.per.gene.wecare.df$cbc.wes > 1)
+
+burden.per.gene.wecare.df %>% 
+  select(gene, cbc.wes) %>%
+  filter(cbc.wes > 1) %>%
+  arrange(desc(cbc.wes))
+
+# Top genes in CFBC wecare
+sum(burden.per.gene.wecare.df$cfbc.wes > 0.01)
+sum(burden.per.gene.wecare.df$cfbc.wes > 0.05)
+sum(burden.per.gene.wecare.df$cfbc.wes > 0.5)
+sum(burden.per.gene.wecare.df$cfbc.wes > 1)
+
+burden.per.gene.wecare.df %>% 
+  select(gene, cfbc.wes) %>%
+  filter(cfbc.wes > 1) %>%
+  arrange(desc(cfbc.wes))
+
+```
+
+# explore_1k_burdens
+
+```{r explore_1k_burdens}
+
+hist(burden.per.gene.1k.df$eur.1k, breaks=seq(0, 3, 0.01))
+hist(burden.per.gene.1k.df$all.1k, breaks=seq(0, 3, 0.01))
+
+# Europeans
+sum(burden.per.gene.1k.df$eur.1k > 0.01)
+sum(burden.per.gene.1k.df$eur.1k > 0.05)
+sum(burden.per.gene.1k.df$eur.1k > 0.5)
+sum(burden.per.gene.1k.df$eur.1k > 1)
+
+burden.per.gene.1k.df %>% 
+  select(gene, eur.1k) %>%
+  filter(eur.1k > 1) %>%
+  arrange(desc(eur.1k))
+
+# All data
+sum(burden.per.gene.1k.df$all.1k > 0.01)
+sum(burden.per.gene.1k.df$all.1k > 0.05)
+sum(burden.per.gene.1k.df$all.1k > 0.5)
+sum(burden.per.gene.1k.df$all.1k > 1)
+
+burden.per.gene.1k.df %>% 
+  select(gene, all.1k) %>%
+  filter(all.1k > 1) %>%
+  arrange(desc(all.1k))
+
+
+```
+
+# genes_numbers_and_overlaps
+
+```{r genes_numbers_and_overlaps}
+
+# Count genes subsets
+genes_1k <- rownames(burden.per.gene.1k.df) 
+genes_wecare <- rownames(burden.per.gene.wecare.df)
+genes_intersect <- intersect(genes_1k, genes_wecare)
+genes_union <- union(genes_1k, genes_wecare)
+genes_unique_1k <- setdiff(genes_1k, genes_wecare)
+genes_unique_wecare <- setdiff(genes_wecare, genes_1k)
+
+n_genes_1k <- length(genes_1k) # 9,962
+n_genes_wecare <- length(genes_wecare) # 4,001
+n_genes_intersect <- length(genes_intersect) # 3,129
+n_genes_union <- length(genes_union) # 10,834
+n_genes_unique_1k <- length(genes_unique_1k) # 6,833
+n_genes_unique_wecare <- length(genes_unique_wecare) # 872
+
+# Plot venn diagram
+plot.new()
+title(paste("lof genes (",format(n_genes_union,big.mark = "'"),")",sep=""))
+draw.pairwise.venn(
+  area1 = n_genes_wecare, 
+  area2 = n_genes_1k, 
+  cross.area = n_genes_intersect,
+  category=c(paste("wecare\n",format(n_genes_wecare,big.mark = "'"),sep=""),
+             paste("1k\n",format(n_genes_1k,big.mark = "'"),sep="")),
+  cat.dist=c(0.1,0.1),
+  margin=0.1)
+
+# Save venn diagram to pdf
+pdf("results/wecare_1k_lof_venn.pdf")
+
+  plot.new()
+  title(paste("lof genes (",format(n_genes_union,big.mark = "'"),")",sep=""))
+  draw.pairwise.venn(
+    area1 = n_genes_wecare, 
+    area2 = n_genes_1k, 
+    cross.area = n_genes_intersect,
+    category=c(paste("wecare\n",format(n_genes_wecare,big.mark = "'"),sep=""),
+               paste("1k\n",format(n_genes_1k,big.mark = "'"),sep="")),
+    cat.dist=c(0.1,0.1),
+    margin=0.1)
+
+dev.off()
+
+# Clenup
+#grid.newpage()
+rm(genes_1k, genes_wecare, genes_intersect, 
+   genes_union)
+rm(n_genes_1k, n_genes_wecare, n_genes_intersect, 
+   n_genes_union, n_genes_unique_1k, n_genes_unique_wecare)
+
+```
+
+# table_with_overlap_lof_genes_between_1k_and_wecare
+
+```{r table_with_overlap_lof_genes_between_1k_and_wecare}
+
+burden.overlap.df <- merge(burden.per.gene.1k.df, burden.per.gene.wecare.df, by="gene")
+rownames(burden.overlap.df) <- burden.overlap.df[,"gene"]
+dim(burden.overlap.df)
+colnames(burden.overlap.df)
+str(burden.overlap.df)
+burden.overlap.df[1:5,1:5]
+
+```
+
+# table_with_unique_lof_genes_in_wecare
+
+```{r table_with_unique_lof_genes_in_wecare}
+
+burden.unique.wecare.df <- burden.per.gene.wecare.df[genes_unique_wecare,]
+dim(burden.unique.wecare.df)
+colnames(burden.unique.wecare.df)
+str(burden.unique.wecare.df)
+burden.unique.wecare.df[1:5,]
+
+rm(burden.per.gene.wecare.df, genes_unique_wecare)
+
+```
+
+# table_with_unique_lof_genes_in_1k
+
+```{r table_with_unique_lof_genes_in_1k}
+
+burden.unique.1k.df  <- burden.per.gene.1k.df[genes_unique_1k,]
+dim(burden.unique.1k.df)
+colnames(burden.unique.1k.df)
+str(burden.unique.1k.df)
+burden.unique.1k.df[1:5,]
+
+rm(burden.per.gene.1k.df, genes_unique_1k)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s10_merge_wecare_1k.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```

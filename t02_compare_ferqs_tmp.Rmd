@@ -1,0 +1,212 @@
+---
+title: "Compare lof burdens in aggregaed wecare and 1k"
+author: "AL"
+output: html_document
+---
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+library(dplyr)
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+# Read
+load(file="data/s10_merge_wecare_1k.RData")
+ls()
+
+dim(burden.overlap)
+burden.overlap[1:5,]
+
+dim(burden.unique.wecare)
+burden.unique.wecare[1:5,]
+
+dim(burden.unique.1k)
+burden.unique.1k[1:5,]
+
+```
+
+# eur_ubc_cbc_mx
+
+```{r eur_ubc_cbc_mx}
+
+ubc.eur <- burden.overlap.mx[,"ubc.wes"] - burden.overlap.mx[,"eur.1k"]
+cbc.ubc <- burden.overlap.mx[,"cbc.wes"] - burden.overlap.mx[,"ubc.wes"]
+cbc.eur <- burden.overlap.mx[,"cbc.wes"] - burden.overlap.mx[,"eur.1k"]
+
+eur.rare <- burden.overlap.mx[,"eur.1k"] < 0.01
+
+ubc.eur.hi <- ubc.eur > 0.01
+cbc.ubc.hi <- cbc.ubc > 0.01
+
+cbc.ubc.eur.rare <- ubc.eur.hi & cbc.ubc.hi & eur.rare
+sum(cbc.ubc.eur.rare)
+
+burden.overlap.mx[cbc.ubc.eur.rare,c("eur.1k","ubc.wes","cbc.wes")]
+
+rm(ubc.eur, cbc.ubc, cbc.eur, eur.rare, ubc.eur.hi, cbc.ubc.hi, cbc.ubc.eur.rare)
+
+```
+
+
+
+```{r }
+cbc.ubc <- burden.unique.wecare.df[,"cbc.wes"] - burden.unique.wecare.df[,"ubc.wes"]
+
+order.cbs.ubc <- order(cbs.ubc, decreasing = TRUE) # increasing may also be interesting ... 
+order.cbs.ubc.eur <- order(ubc.eur + cbs.ubc, decreasing = TRUE) # increasing may also be interesting ... 
+order.cbs.eur <- order(cbc.eur, decreasing = TRUE) # increasing may also be interesting ... 
+order.cfbs.eur <- order(cfbc.eur, decreasing = TRUE) # increasing may also be interesting ... 
+
+x <- burden.overlap[order.cbs.vs.ubc, c("eur.1k","ubc.wes","cbc.wes")]
+x[1:100,] # Export to Excel and highlit, compare to DC's
+
+#                eur.1k    ubc.wes    cbc.wes
+# ...
+# ZNF527         0.0000 0.26470588 0.34042553    # transcr factor - use proteomics?
+# MKI67          0.0000 0.037209302 0.05261389   # Ki67 is the proliferation marker ...
+# ...
+y <- burden.overlap[order.cbs.ubc.eur, c("eur.1k","ubc.wes","cbc.wes")]
+y[1:100,] 
+
+# Export to Excel and highlit, compare to DC's
+#               eur.1k    ubc.wes    cbc.wes
+#TRBV3-1        0.0010 1.02619971 1.03892729
+#VPS11          0.0000 1.00000000 1.00000000
+#RP11-166B2.1   0.0010 1.00000000 1.00000000
+#SARM1          0.0010 1.00000000 1.00000000
+#OR11G2         0.0000 0.73456790 0.71848739
+#C11orf40       0.1074 0.70911769 0.64034764
+#PRIM2          0.0000 0.50418410 0.50424646
+#OR4C3          0.0010 0.50000000 0.50000000
+
+z <- burden.overlap[order.cbs.eur, c("eur.1k","cbc.wes")]
+z[1:100,] 
+
+zz <- z[ z[,"eur.1k"]<0.01 , ]
+zz[1:100,]
+
+# ATM            0.0010 0.012561312
+
+a <- burden.overlap[order.cfbs.eur, c("eur.1k","cfbc.wes")]
+a[1:100,] 
+
+aa <- a[ a[,"eur.1k"]<0.01 , ]
+aa[1:100,]
+
+# ATM disappears from the top 100
+aa[c("PALB2","ATM"),]
+#      eur.1k    cfbc.wes
+#PALB2  0.001 0.011764706
+#ATM    0.001 0.005882353
+
+
+```
+
+# done till here
+
+```{r etc}
+
+library(dplyr)
+x <- cbind(rownames(burden.overlap),burden.overlap)
+
+str(x)
+x <- as.data.frame(x) %>% arrange(desc(as.vector(cbc.wes) - as.vector(ubc.wes)))
+x[1:25,]
+
+# Calculate difference between EBs
+EB_difference <- merged.eb.num.mx[,"EB_wecare"] - merged.eb.num.mx[,"EUR_EB_1k"]
+merged.eb.num.mx <- cbind(EB_difference, merged.eb.num.mx)
+rm(EB_difference)
+
+merged.eb.num.mx <- merged.eb.num.mx[order(merged.eb.num.mx[,"EB_difference"], decreasing = TRUE),]
+
+hist(merged.eb.num.mx[,"EB_difference"])
+min(merged.eb.num.mx[,"EB_difference"])
+max(merged.eb.num.mx[,"EB_difference"])
+
+extreme_differences <- merged.eb.num.mx[,"EB_difference"] < -1 | merged.eb.num.mx[,"EB_difference"] > 1
+sum(extreme_differences) # 14
+
+merged.eb.num.mx[extreme_differences,]
+#          EB_difference EUR_EB_1k EB_wecare EN_1k EN_wecare
+#PRIM2          1.678977    0.0000 1.6789766 15024      5120
+#SARM1          1.969000    0.0010 1.9700000 15024      1978
+#OR4C5          2.871000    0.0000 2.8710000     0      6144
+#KRTAP10-1      1.304000    0.0000 1.3040000     0      2048
+#AGAP3         -2.000000    2.0000 0.0000000 15024         0
+#ZNF598        -2.000000    2.0000 0.0000000 10016         0
+
+rm(extreme_differences)
+
+```
+
+# first_look_at_top_genes
+
+```{r first_look_at_top_genes}
+
+# Top genes
+merged.eb.num.mx[1:100,] # MAP2K3, MKI67, WNK1
+
+# Top genes rarely mutated in 1k
+x <- merged.eb.num.mx
+x <- x[x[,"EUR_EB_1k"] < 0.05, ]
+x <- x[order(x[,"EB_difference"], decreasing = TRUE),]
+x[1:100,] # MAP2K3, MKI67, WNK1
+rm(x)
+
+# Top intersect genes rarely mutated in 1k
+x <- merged.eb.num.mx[genes_intersect,]
+x <- x[x[,"EUR_EB_1k"] < 0.05, ]
+x <- x[order(x[,"EB_difference"], decreasing = TRUE),]
+dim(x)
+x[1:100,] # MKI67
+rm(x)
+
+# Germline LOSS of function in MKI67 looks to be associated with BC??
+
+# Top unique wecare genes
+x <- merged.eb.num.mx[genes_unique_wecare,]
+x <- x[order(x[,"EB_difference"], decreasing = TRUE),]
+dim(x)
+x[1:100,] # MAP2K3, ATXN3, PARP14
+rm(x)
+
+# Top unique 1k genes
+x <- merged.eb.num.mx[genes_unique_1k,]
+x <- x[order(x[,"EB_difference"]),]
+dim(x)
+x[1:100,] # MMP28, 
+rm(x)
+
+# Top gain of function genes, non-unique to 1k
+x <- merged.eb.num.mx[genes_intersect,]
+x <- x[order(x[,"EB_difference"]),]
+dim(x)
+x[1:100,] # CYP2D6, GNRH2, ANKRD30A, some HLAs (DRB1, DRB5, DPB1)
+rm(x)
+
+# Germline GAIN of function in CYP2D6 looks to be associated with BC??
+
+# Known top breast cancer associated genes
+merged.eb.num.mx[c("ATM","BRCA1","BRCA2", "PALB2"),] # :(
+# no "CHK2"
+
+```

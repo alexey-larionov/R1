@@ -1,0 +1,201 @@
+---
+title: "Aggregate lof variants by SKAT, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 06Apr2016
+last_updated:06Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+# Load required libraries
+library(SKAT)
+library(dplyr)
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s05_add_subgroups_afs_feb2016.RData")
+ls()
+
+dim(genotypes.mx)
+genotypes.mx[1:5,1:5]
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+dim(variants.df)
+colnames(variants.df)
+str(variants.df)
+variants.df[1:5,1:5]
+
+# Check consistence of tables
+sum(rownames(genotypes.mx) != rownames(variants.df))
+sum(colnames(genotypes.mx) != rownames(phenotypes.df))
+
+```
+
+# do_analysis
+
+```{r do_analysis}
+
+# Make data names coherent with DC's script
+gt <- genotypes.mx
+dim(gt)
+gt[1:5,1:5]
+
+d <- phenotypes.df
+dim(d)
+d[1:5,1:5]
+
+d.a <- variants.df
+dim(d.a)
+d.a[1:5,1:5]
+
+# Get list of genes
+Gene.List <- unique(d.a$SYMBOL)
+
+# Set data for glm (name coherent with DC scripts)
+Y <- d$cc
+Q <- cbind(d$Eigen_1, d$Eigen_2, d$Eigen_3)
+W <- cbind(d$sub_dx_age)
+
+# Handle NAs in CC (if any)
+keep <- !is.na(Y)
+
+# Additional settings
+CALL.RATE.CUTOFF <- 0.95
+MAF.LOWER.LIMIT <- 0.0
+MAF.UPPER.LIMIT <- 0.05
+
+# Make header for the results table
+r.table <- c("Gene", "M", "P.SKAT")
+
+# For each gene
+for (Gene in Gene.List){
+  
+  # Initialise result with NAs
+  r <- c(as.character(Gene), NA, NA)
+  
+  # Get list of variants
+  Variant.List <- rownames(d.a[d.a$SYMBOL == Gene,])
+	
+ 	# Get genotypes data
+	G <- gt[row.names(gt)%in%Variant.List,]
+	
+	# Calculate statistics
+	if(class(G) == "matrix" && nrow(G) > 1) { 
+	  
+	  # Remove variants below the callrate threshold
+		CR <- apply(G, 1, FUN=function(v) { round(sum(!is.na(v[keep]))/length(v[keep]),3) })
+		G <- G[ CR > CALL.RATE.CUTOFF, ]
+		
+		# If more than one variant still remain
+		if(class(G) == "matrix" && nrow(G) > 1 ) {
+			
+		  # Filter variants with MAF outside the required range
+		  MAF <- apply(G, 1, FUN=function(v) { round(sum(v[keep],na.rm=T)/(length(v[keep])*2),3) })
+			G <- G[unlist(lapply(MAF, FUN=function(v) { 
+			  (v > MAF.LOWER.LIMIT && v < MAF.UPPER.LIMIT) || (v < (1-MAF.LOWER.LIMIT) && v > (1-MAF.UPPER.LIMIT))})),]
+		} 
+		
+	  # If more than one variant still remain
+		if(class(G) == "matrix" && nrow(G) > 1) {
+		  
+		  skat.reg.null <- SKAT_Null_Model(Y ~ W+Q, out_type="D")
+		  
+		  skat.reg <- SKAT( Z=t(as.matrix(G)), obj=skat.reg.null, kernel="linear.weighted", method="optimal.adj")
+		  
+		  M <- skat.reg$param$n.marker
+		  P.SKAT <- skat.reg$p.value
+		  
+		  r <- c(as.character(Gene), M, format(P.SKAT, scientific=T, digits=3))
+		
+		} 
+	
+  }
+
+	# Add gene the results table
+  r.table <- rbind(r.table, r)
+
+}
+
+# Clean-up
+rm(gt, d, d.a, Y, Q, W, G, Gene, Gene.List, skat.reg, skat.reg.null, r, Variant.List, 
+   keep, M, P.SKAT, MAF, CR, CALL.RATE.CUTOFF, MAF.LOWER.LIMIT, MAF.UPPER.LIMIT)
+
+```
+
+# reshape_results_table
+
+```{r reshape_results_table}
+
+# Save column and row names
+c.names <- r.table[1,]
+r.names <- r.table[,1]
+
+# Convert data to numeric
+r.table <- r.table[-1,-1]
+r.table <- matrix(as.numeric(r.table), nrow=nrow(r.table))
+
+# Convert matrix to df with numeric columns
+SKAT.results.df <- as.data.frame(r.table)
+
+# Restore column and row names
+SKAT.results.df <- cbind(r.names[-1], SKAT.results.df)
+colnames(SKAT.results.df) <- c.names
+str(SKAT.results.df)
+
+# Sort by P.SKAT
+SKAT.results.df <- SKAT.results.df %>% arrange(P.SKAT)
+
+# Remove genes with one or less variants
+top.genes.df <- SKAT.results.df %>% filter(M > 1)
+dim(top.genes.df)
+top.genes.df[1:100,]
+
+# Save results to text files
+write.table(SKAT.results.df, "results/SKAT_Results.txt", sep="\t", quote=FALSE)
+write.table(top.genes.df, "results/SKAT_TopGenes.txt", sep="\t", quote=FALSE)
+
+# Clean-up
+rm(c.names, r.names, r.table)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s13_aggregate_by_SKAT.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```

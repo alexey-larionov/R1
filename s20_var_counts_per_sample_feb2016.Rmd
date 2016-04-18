@@ -1,0 +1,93 @@
+---
+title: "Check vars per sample, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 18Apr2016
+last updated: 18Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s02_filter_mask_feb2016.RData")
+ls()
+
+dim(covar.df)
+colnames(covar.df)
+str(covar.df)
+covar.df[1:5,1:5]
+
+dim(samples.df)
+colnames(samples.df)
+str(samples.df)
+samples.df[1:5,]
+
+dim(vv.pf.df)
+colnames(vv.pf.df)
+str(vv.pf.df)
+vv.pf.df[1:5,1:3]
+
+dim(gt.pf.msk.mx)
+gt.pf.msk.mx[1:5,1:5]
+
+# Check consistence of rownames
+sum(rownames(gt.pf.msk.mx) != rownames(vv.pf.df), na.rm=TRUE)
+
+```
+
+# count_vars_per_sample
+
+```{r count_vars_per_sample}
+
+count.vars <- function(x){sum(x>0, na.rm = TRUE)}
+
+var.counts <- apply(gt.pf.msk.mx, 2, count.vars)
+
+hist(var.counts)
+
+```
+
+# Conclusion
+
+The number of variants per case exceeds expected from ICR1000 ~21k
+This justifies further filtering (although ICR1000 used only 17k genes ...)
+
+After evaluation of selected variants on IGV, it looks that this further filtering 
+would be more reasonable on genotypes, rather than variants level.  
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s20_var_counts_per_sample_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```

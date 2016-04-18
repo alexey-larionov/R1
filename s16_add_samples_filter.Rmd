@@ -1,0 +1,99 @@
+---
+title: "Add filter column to samples table: wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 12Apr2016
+last updated: 12Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s03_select_lof_feb2016.RData")
+ls()
+
+# remove irrelevant data
+rm(covar.df, vv.pf.lof.df, gt.pf.msk.lof.mx)
+
+dim(samples.df)
+colnames(samples.df)
+str(samples.df)
+samples.df[1:5,]
+
+```
+
+# add_annotations
+
+```{r add_annotations}
+
+low.concordance <- c("P1_D07", "P1_D09", "P1_F12", "P2_A01", "P2_A04", 
+                     "P2_B04", "P3_A10", "P3_B11", "P3_E11", "P4_E08", 
+                     "P4_G12", "P5_B03", "P5_C03", "P5_D03", "P5_H03")
+not.annotated <- c("P1_C02", "P1_C04", "P1_C06", "P1_C11", "P1_E10", 
+                   "P1_F01", "P1_F10", "P1_H05")
+low.concordance.not.annotated <- c("P1_B08", "P1_F07", "P1_G07", "P1_G08")
+duplicate <- c("P4_F01", "P5_D07")
+low.coverage <- c("P2_E05", "P2_H10", "P5_G09") # Filter not applied
+
+samples <- as.vector(samples.df$wes_id)
+filter <- rep("pass", nrow(samples.df))
+
+"low_concordance" -> filter[samples %in% low.concordance] # 15
+"not_annotated" -> filter[samples %in% not.annotated] # 8
+"low_concordance, not_annotated" -> filter[samples %in% low.concordance.not.annotated] # 4
+"duplicate" -> filter[samples %in% duplicate] # 2
+
+samples.df <- cbind(samples.df, filter)
+
+dim(samples.df)
+colnames(samples.df)
+str(samples.df)
+samples.df[1:5,]
+
+sum(samples.df$filter=="pass")
+sum(samples.df$filter=="low_concordance")
+sum(samples.df$filter=="low_concordance, not_annotated")
+sum(samples.df$filter=="not_annotated")
+sum(samples.df$filter=="duplicate")
+
+rm(low.concordance, not.annotated, low.concordance.not.annotated, duplicate, low.coverage, samples, filter)
+
+```
+
+# save_data
+
+```{r save_data}
+
+write.table(samples.df, file="data/samples_ids.txt", sep="\t", quote=FALSE)
+save.image(file="data/s16_add_samples_filter_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```

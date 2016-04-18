@@ -1,0 +1,377 @@
+---
+title: "Compare lof burdens wecare feb2016 and 1k"
+author: "AL"
+output: html_document
+---
+
+started: Mar2016
+last_updated:05Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+library(dplyr)
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+# Read
+load(file="data/s10_merge_wecare_1k.RData")
+ls()
+
+dim(burden.overlap.df)
+colnames(burden.overlap.df)
+str(burden.overlap.df)
+burden.overlap.df[1:5,]
+
+dim(burden.unique.wecare.df)
+colnames(burden.unique.wecare.df)
+str(burden.unique.wecare.df)
+burden.unique.wecare.df[1:5,]
+
+dim(burden.unique.1k.df)
+colnames(burden.unique.1k.df)
+str(burden.unique.1k.df)
+burden.unique.1k.df[1:5,]
+
+```
+
+# explore_genes_of_interest
+
+```{r explore_genes_of_interest}
+
+bc.suseptibility.genes <- c("BRCA1", "BRCA2", "PALB2", "TP53", "ATM", "CHEK2", "CDH1")
+bc.somatic.genes <- c("ERBB2", "PIK3CA", "PTEN")
+eg.genes <- c("ESR1", "CYP19A1", "CYP2D6", "GNRH1", "GNRH2", "GNRHR", "SHBG")
+proliferation.genes <-c("CCND1","CCNB1", "MKI67")
+#DNA.repair.genes <- 
+#other.genes.of.interest <-
+#etc
+
+burden.overlap.df[bc.suseptibility.genes,]
+burden.overlap.df[bc.somatic.genes,]
+burden.overlap.df[eg.genes,]
+burden.overlap.df[proliferation.genes,]
+
+# Assuming lof associated with BC
+burden.unique.wecare.df[bc.suseptibility.genes,]
+burden.unique.wecare.df[bc.somatic.genes,]
+burden.unique.wecare.df[eg.genes,]
+burden.unique.wecare.df[proliferation.genes,]
+
+# Assuming gain associated with bc
+burden.unique.1k.df[bc.suseptibility.genes,]
+burden.unique.1k.df[bc.somatic.genes,]
+burden.unique.1k.df[eg.genes,]
+burden.unique.1k.df[proliferation.genes,]
+
+```
+
+# loss_eur_bc
+
+Looking for broad BC predisposition: BC vs no BC.
+Playing with thresholds to get a meaningful result.
+
+```{r loss_eur_bc}
+
+nrow(burden.overlap.df)
+
+eur.burden.threshold <- 0.01
+burden.increment.threshold <- 0.01
+
+x <- burden.overlap.df %>% 
+  select(gene, eur.1k, gt.wes) %>%
+  filter(eur.1k < eur.burden.threshold) %>%
+  filter(gt.wes - eur.1k > burden.increment.threshold) %>%
+  arrange(desc(gt.wes - eur.1k))
+
+nrow(x)
+
+x
+
+x %>% filter(gene %in% bc.suseptibility.genes)
+x %>% filter(gene %in% bc.somatic.genes)
+x %>% filter(gene %in% eg.genes)
+x %>% filter(gene %in% proliferation.genes)
+
+eur.burden.threshold <- 0.01
+burden.increment.threshold <- 0.005
+
+y <- burden.overlap.df %>% 
+  select(gene, eur.1k, gt.wes) %>%
+  filter(eur.1k < eur.burden.threshold) %>%
+  filter(gt.wes - eur.1k > burden.increment.threshold) %>%
+  arrange(desc(gt.wes - eur.1k))
+
+nrow(y)
+
+y
+
+y %>% filter(gene %in% bc.suseptibility.genes)
+y %>% filter(gene %in% bc.somatic.genes)
+y %>% filter(gene %in% eg.genes)
+y %>% filter(gene %in% proliferation.genes)
+
+eur.burden.threshold <- 0.01
+burden.increment.threshold <- 0.001
+
+z <- burden.overlap.df %>% 
+  select(gene, eur.1k, gt.wes) %>%
+  filter(eur.1k < eur.burden.threshold) %>%
+  filter(gt.wes - eur.1k > burden.increment.threshold) %>%
+  arrange(desc(gt.wes - eur.1k))
+
+nrow(z)
+
+z
+
+z %>% filter(gene %in% bc.suseptibility.genes)
+z %>% filter(gene %in% bc.somatic.genes)
+z %>% filter(gene %in% eg.genes)
+z %>% filter(gene %in% proliferation.genes)
+
+write.table(y, "results/loss_eur_bc.txt", quote=FALSE, sep="\t")
+
+rm(x, y, eur.burden.threshold, burden.increment.threshold)
+
+```
+
+# loss_eur_ubc_cbc
+
+Strengthening the selection by adding trend:
+no-BC -> UBC -> CBC
+
+```{r loss_eur_ubc_cbc}
+
+nrow(burden.overlap.df)
+
+eur.burden.threshold <- 0.01
+burden.increment.threshold <- 0.01
+
+x <- burden.overlap.df %>% 
+  select(gene, eur.1k, ubc.wes, cbc.wes) %>%
+  filter(eur.1k < eur.burden.threshold) %>%
+  filter(ubc.wes - eur.1k > burden.increment.threshold) %>%
+  filter(cbc.wes - ubc.wes > burden.increment.threshold) %>%
+  arrange(desc(cbc.wes - eur.1k))
+
+nrow(x)
+
+x
+
+eur.burden.threshold <- 0.01
+burden.increment.threshold <- 0.001
+
+y <- burden.overlap.df %>% 
+  select(gene, eur.1k, ubc.wes, cbc.wes) %>%
+  filter(eur.1k < eur.burden.threshold) %>%
+  filter(ubc.wes - eur.1k > burden.increment.threshold) %>%
+  filter(cbc.wes - ubc.wes > burden.increment.threshold) %>%
+  arrange(desc(cbc.wes - eur.1k))
+
+nrow(y)
+
+y
+
+y %>% filter(gene %in% bc.suseptibility.genes)
+y %>% filter(gene %in% bc.somatic.genes)
+y %>% filter(gene %in% eg.genes)
+y %>% filter(gene %in% proliferation.genes)
+
+write.table(y, "results/loss_eur_ubc_cbc.txt", quote=FALSE, sep="\t")
+
+rm(x, y, eur.burden.threshold,burden.increment.threshold)
+
+```
+
+# loss_unique_ubc_cbc
+
+It is unlikely that 1k failed to detect what we detected
+so it is safe to assume that Eur 1k ~0
+
+```{r loss_unique_ubc_cbc}
+
+nrow(burden.unique.wecare.df)
+
+threshold <- 0.01
+
+x <- burden.unique.wecare.df %>% 
+  select(gene, ubc.wes, cbc.wes) %>%
+  filter(ubc.wes > threshold)  %>%
+  filter(cbc.wes - ubc.wes > threshold)  %>%
+  arrange(desc(cbc.wes - ubc.wes))
+
+nrow(x)
+
+x
+
+threshold <- 0.001
+
+y <- burden.unique.wecare.df %>% 
+  select(gene, ubc.wes, cbc.wes) %>%
+  filter(ubc.wes > threshold)  %>%
+  filter(cbc.wes - ubc.wes > threshold) %>%
+  arrange(desc(cbc.wes - ubc.wes))
+    
+nrow(y)
+
+y
+
+y %>% filter(gene %in% bc.suseptibility.genes)
+y %>% filter(gene %in% bc.somatic.genes)
+y %>% filter(gene %in% eg.genes)
+y %>% filter(gene %in% proliferation.genes)
+
+write.table(y, "results/loss_unique_ubc_cbc.txt", quote=FALSE, sep="\t")
+
+rm(x,y,threshold)
+
+```
+
+# gain_eur_bc
+
+May be just poorly detectable in our wes ...
+
+```{r gain_eur_bc}
+
+nrow(burden.overlap.df)
+
+wecare.burden.threshold <- 0.05
+burden.increment.threshold <- 0.1
+
+x <- burden.overlap.df %>% 
+  select(gene, eur.1k, gt.wes) %>%
+  filter(gt.wes  < wecare.burden.threshold) %>%
+  filter(eur.1k - gt.wes  > burden.increment.threshold) %>%
+  arrange(desc(eur.1k - gt.wes))
+
+nrow(x)
+
+x
+
+x %>% filter(gene %in% bc.suseptibility.genes)
+x %>% filter(gene %in% bc.somatic.genes)
+x %>% filter(gene %in% eg.genes)
+x %>% filter(gene %in% proliferation.genes)
+
+write.table(x, "results/gain_eur_bc.txt", quote=FALSE, sep="\t")
+
+rm(x,wecare.burden.threshold, burden.increment.threshold)
+
+```
+
+# gain_eur_ubc_cbc
+
+```{r gain_eur_ubc_cbc}
+
+nrow(burden.overlap.df)
+
+threshold <- 0.01
+
+x <- burden.overlap.df %>% 
+  select(gene, eur.1k, ubc.wes, cbc.wes) %>%
+  filter(eur.1k - ubc.wes  > threshold) %>%
+  filter(ubc.wes - cbc.wes  > threshold) %>%
+  arrange(desc(eur.1k - cbc.wes))
+
+nrow(x)
+
+x
+
+threshold <- 0.0025
+
+y <- burden.overlap.df %>% 
+  select(gene, eur.1k, ubc.wes, cbc.wes) %>%
+  filter(eur.1k - ubc.wes  > threshold) %>%
+  filter(ubc.wes - cbc.wes  > threshold) %>%
+  arrange(desc(eur.1k - cbc.wes))
+
+nrow(y)
+
+y
+
+y %>% filter(gene %in% bc.suseptibility.genes)
+y %>% filter(gene %in% bc.somatic.genes)
+y %>% filter(gene %in% eg.genes)
+y %>% filter(gene %in% proliferation.genes)
+
+write.table(y, "results/gain_eur_ubc_cbc.txt", quote=FALSE, sep="\t")
+
+rm(x,y,threshold)
+
+```
+
+# gain_unique_1k
+
+May be just poorly detectable in our wes ...
+
+```{r gain_unique_1k}
+
+nrow(burden.unique.1k.df)
+
+threshold <- 0.1
+
+x <- burden.unique.1k.df %>% 
+  filter(eur.1k > threshold) %>%
+  arrange(desc(eur.1k)) 
+
+nrow(x)
+
+x
+
+x %>% filter(gene %in% bc.suseptibility.genes)
+x %>% filter(gene %in% bc.somatic.genes)
+x %>% filter(gene %in% eg.genes)
+x %>% filter(gene %in% proliferation.genes)
+
+write.table(x, "results/gain_unique_1k.txt", quote=FALSE, sep="\t")
+
+rm(x, threshold)
+
+```
+
+# Summary of observations:
+
+Burdens ranking allows to identify 2 known BC suseptibility genes: ATM and CHEK2.
+
+Germ-line LOSS of function in MKI67 looks to be associated with BC?
+
+Germ-line GAIN of function in Eg-signalling related gene (CYP2D6 and GNRH2) looks to be associated with BC??
+
+### Of note:
+Known genes associated with familial BC are not on top ...
+
+Check whether expanding to deleterious/damaging missenses will bring the known genes up?
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s11_rank_burdens.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```

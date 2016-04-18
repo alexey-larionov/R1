@@ -1,0 +1,113 @@
+---
+title: "test thgenetics package"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 14Apr2016
+last updated: 14Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+library(thgenetics)
+#?rareGeneTest
+#?rarePathwayTest
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s05_add_subgroups_afs_feb2016.RData")
+ls()
+
+dim(genotypes.mx)
+genotypes.mx[1:5,1:5]
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+dim(variants.df)
+colnames(variants.df)
+str(variants.df)
+variants.df[1:5,1:5]
+
+# Check consistence of tables
+sum(rownames(genotypes.mx) != rownames(variants.df))
+sum(colnames(genotypes.mx) != rownames(phenotypes.df))
+
+
+
+```
+
+# run_rareGeneTest
+
+```{r run_rareGeneTest}
+
+phenotypes <- as.numeric(phenotypes.df$cc)
+names(phenotypes) <- rownames(phenotypes.df)
+
+all.genes <- as.character(variants.df$SYMBOL)
+unique.genes <- unique(all.genes)
+
+#for (gene in unique.genes) {
+  
+  #gene <- "ATM"
+  
+  
+  genotypes = t(genotypes.mx[all.genes == gene,])
+  
+  load(file="data/s19_test_thgenetics.RData")
+  
+  summary(genotypes)
+  sum(phenotypes)
+  
+  rareGeneTest(genotypes, phenotypes, 
+             use_sign = TRUE, 
+             use_weight = TRUE, 
+             binary = TRUE, 
+             strategy = "step")
+  
+  genotypes <- matrix(as.numeric(genotypes), nrow=nrow(genotypes))
+  phenotypes <- as.numeric(phenotypes)
+  rareGeneTest(g,c)
+  rm(g, genotype, c, case)
+#}
+
+```
+
+# save_data
+
+```{r save_data}
+
+rm(genotypes.mx, phenotypes.df, variants.df, all.genes, gene, genes, unique.genes)
+save.image(file="data/s19_test_thgenetics.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```
+

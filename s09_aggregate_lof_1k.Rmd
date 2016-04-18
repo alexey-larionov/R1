@@ -1,0 +1,124 @@
+---
+title: "Aggregate lof variants by gene for 1k"
+author: "AL"
+output: html_document
+---
+
+started: Mar2016
+last_updated: 26Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s08_select_lof_1k.RData")
+ls()
+
+dim(ph3_1k.lof.df)
+colnames(ph3_1k.lof.df)
+str(ph3_1k.lof.df)
+ph3_1k.lof.df[1:5,1:7]
+
+# Explore selected genes
+test_genes_list <- c("NPHP4","B3GNT6", "SARM1")
+test_genes_index <- ph3_1k.lof.df$SYMBOL %in% test_genes_list
+ph3_1k.lof.df[test_genes_index,c("SYMBOL","AF","AC","AN")]
+rm(test_genes_index)
+
+```
+
+# explore_nums_of_lof_variants_per_gene
+
+```{r explore_nums_of_lof_variants_per_gene}
+
+genes <- as.vector(ph3_1k.lof.df[ ,"SYMBOL"] )
+length(genes)
+length(unique(genes))
+
+x <- sort(table(genes), decreasing = TRUE)
+x[1:88] # >=10 types of lof events per gene (~1% genes with lof events)
+
+hist(x, breaks=c(-0.5:55.5), xlim=c(0,55), ylim=c(0,5000), 
+     main="HI-LOF variants per gene", 
+     xlab="Num of HI-LOF variants", ylab="Genes count")
+
+rm(x, genes)
+
+```
+
+# aggregate_by_gene
+
+```{r aggregate_by_gene}
+
+# Pick and check required columns
+required.columns <- c("SYMBOL", "EUR_AF", "AF")
+af.1k.lof.df <- ph3_1k.lof.df[,required.columns]
+str(af.1k.lof.df)
+rm(ph3_1k.lof.df)
+
+# Aggregate
+burden.per.gene.1k.df <- aggregate(af.1k.lof.df[,-1], list(gene=af.1k.lof.df$SYMBOL), sum, na.rm=TRUE)
+colnames(burden.per.gene.1k.df) <- c("gene","BD.eur", "BD.1k")
+str(burden.per.gene.1k.df)
+
+# Update rownames
+rownames(burden.per.gene.1k.df) <- burden.per.gene.1k.df[,1]
+  
+# Check the summation
+sum(af.1k.lof.df[,-1], na.rm = TRUE)
+sum(burden.per.gene.1k.df[,-1], na.rm=TRUE)
+
+# Clean-up
+rm(af.1k.lof.df, required.columns)
+
+```
+
+# explore_results
+
+```{r explore_results}
+
+# Check dimentions
+dim(burden.per.gene.1k.df)
+colnames(burden.per.gene.1k.df)
+burden.per.gene.1k.df[1:10,]
+
+# Explore selected genes 
+burden.per.gene.1k.df[test_genes_list,]
+rm(test_genes_list)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s09_aggregate_lof_1k.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```

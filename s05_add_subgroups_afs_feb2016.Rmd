@@ -1,0 +1,321 @@
+---
+title: "Exploring AFs, additional filtering, <br>adding AFs for subgtoups: wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: Mar2016
+last updated: 29Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s04_reshape_data_feb2016.RData")
+ls()
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+dim(variants.df)
+colnames(variants.df)
+str(variants.df)
+variants.df[1:5,1:5]
+
+dim(genotypes.mx)
+genotypes.mx[1:5,1:3]
+
+# Check consistence of variants and samples IDs
+sum(rownames(genotypes.mx) != rownames(variants.df))
+sum(rownames(phenotypes.df) != colnames(genotypes.mx))
+
+```
+
+# explore_AF_AN_and_AC_in_whole_dataset
+
+```{r explore_AF_AN_and_AC_in_whole_dataset}
+
+# Explore AF, AC and AN values reported in vcf file
+hist(variants.df$AF, breaks=seq(0, 1, 0.01))
+hist(variants.df$AC, breaks=seq(0, 1030, 10))
+hist(variants.df$AN, ylim=c(0,5500), labels=TRUE)
+
+# Function to calculate AN from genotypes
+AN.fn <- function(x) 2*sum(!is.na(x))
+
+# Calculate AF, AC and AN from genotypes
+AC.gt <- apply(genotypes.mx, 1, sum, na.rm=TRUE)
+AN.gt <- apply(genotypes.mx, 1, AN.fn)
+AF.gt <- AC.gt / AN.gt
+
+# Compare AF, AC and AN calculated from genotypes 
+# with AF, AC and AN  values reported in vcf
+
+plot(variants.df$AC, AC.gt, main="AC: vcf vs. genotypes")
+# In many cases AC from genotypes is below than from vcf
+
+plot(variants.df$AN, AN.gt, 
+     xlim=c(0,1000), ylim=c(0,1000), 
+     main="AN: vcf vs. genotypes")
+abline(0,1,col="red") 
+# AN from genotypes is systematically smaller than from vcf
+
+plot(variants.df$AF, AF.gt, main="AF: vcf vs. genotypes") 
+# The AFs are concordant, except for some variants, 
+# which will be removed below
+
+```
+
+# exclude_variants_with_discordant_AF_vs_AC_AN
+
+```{r exclude_variants_with_discordant_AF_vs_AC_AN}
+
+# Variants with discrepancies between AF and AC/AN ratio in VCF file
+variants_to_exclude <- AF.gt -variants.df$AF > 0.01 | AF.gt -variants.df$AF < -0.01
+sum(variants_to_exclude)
+rownames(variants.df[variants_to_exclude,])
+
+#View(variants.df[AF.gt -variants.df$AF > 0.1,])
+rownames(variants.df[AF.gt -variants.df$AF > 0.1,])
+
+#View(variants.df[AF.gt -variants.df$AF > 0.2,])
+rownames(variants.df[AF.gt -variants.df$AF > 0.2,])
+
+# Exclude variants with discrepancies
+genotypes.mx <- genotypes.mx[ !variants_to_exclude, ]
+dim(genotypes.mx)
+
+variants.df <- variants.df[ !variants_to_exclude, ]
+dim(variants.df)
+
+rm(AC.gt, AN.gt, AF.gt, variants_to_exclude)
+
+```
+
+# exclude_variants_with_low_AN
+
+```{r exclude_variants_with_low_AN}
+
+# Keep only variants with AN > ~80%
+
+variants_to_exclude <- variants.df[ ,"AN"] < 800
+sum(variants_to_exclude)
+rownames(variants.df[variants_to_exclude,])
+
+genotypes.mx <- genotypes.mx[ !variants_to_exclude, ]
+dim(genotypes.mx)
+
+variants.df <- variants.df[ !variants_to_exclude, ]
+dim(variants.df)
+
+rm(variants_to_exclude)
+
+```
+
+# re-plot_AF_vs_AC_AN
+Re-calculate AFs for whole wecare after filtering and masking
+
+```{r replot_AF_vs_AC_AN}
+
+# Calculate AF, AC and AN from genotypes
+AC.gt <- apply(genotypes.mx, 1, sum, na.rm=TRUE)
+AN.gt <- apply(genotypes.mx, 1, AN.fn)
+AF.gt <- AC.gt / AN.gt
+
+# Compare AF, AC and AN calculated from genotypes 
+# with AF, AC and AN  values reported in vcf
+
+plot(variants.df$AC, AC.gt, main="Corrected AC: vcf vs. genotypes")
+# In many cases AC from genotypes is still below than from vcf
+
+plot(variants.df$AN, AN.gt, 
+     xlim=c(0,1000), ylim=c(0,1000), 
+     main="Corrected AN: vcf vs. genotypes")
+
+abline(0,1,col="red") 
+# AN from genotypes is still systematically smaller than from vcf
+
+plot(variants.df$AF, AF.gt, main="Corrected AF: vcf vs. genotypes") 
+# The AFs are concordant
+
+afs.gt.df <- cbind(AF.gt, AC.gt, AN.gt)
+rm(AF.gt, AC.gt, AN.gt)
+
+```
+
+# recalculate_total_afs
+Re-calculate AFs for whole wecare after filtering and masking
+
+```{r recalculate_total_afs}
+
+# Select cbc cases
+# 1=Case, 0=Control (Confirmed by DC in e-mail to EF of 29-30Mar2016)
+cbc.idx <- phenotypes.df$cc == 1 
+sum(cbc.idx)
+
+gt.cbc.df <- genotypes.mx[,cbc.idx]
+dim(gt.cbc.df)
+
+# Calculate AF, AC and AN from genotypes
+AC.cbc <- apply(gt.cbc.df, 1, sum, na.rm=TRUE)
+AN.cbc <- apply(gt.cbc.df, 1, AN.fn)
+AF.cbc <- AC.cbc / AN.cbc
+hist(AF.cbc, breaks=seq(0,1,0.01))
+
+afs.cbc.df <- cbind(AF.cbc, AC.cbc, AN.cbc)
+rm(gt.cbc.df, cbc.idx, AF.cbc, AC.cbc, AN.cbc)
+
+```
+
+# Calculate AFs for Contralateral BC (CBC, cases)
+
+```{r calculate_cbc_afs}
+
+# Select cbc cases
+# 1=Case, 0=Control (Confirmed by DC in e-mail to EF of 29-30Mar2016)
+cbc.idx <- phenotypes.df$cc == 1 
+sum(cbc.idx)
+
+gt.cbc.df <- genotypes.mx[,cbc.idx]
+dim(gt.cbc.df)
+
+# Calculate AF, AC and AN from genotypes
+AC.cbc <- apply(gt.cbc.df, 1, sum, na.rm=TRUE)
+AN.cbc <- apply(gt.cbc.df, 1, AN.fn)
+AF.cbc <- AC.cbc / AN.cbc
+hist(AF.cbc, breaks=seq(0,1,0.01))
+
+afs.cbc.df <- cbind(AF.cbc, AC.cbc, AN.cbc)
+rm(gt.cbc.df, cbc.idx, AF.cbc, AC.cbc, AN.cbc)
+
+```
+
+# Calculate AFs for Unilateral BC (UBC, controls)
+
+```{r calculate_ubc_afs}
+
+# Select cbc cases
+# 1=Case, 0=Control (Confirmed by DC in e-mail to EF of 29-30Mar2016)
+ubc.idx <- phenotypes.df$cc == 0 
+sum(ubc.idx)
+
+gt.ubc.df <- genotypes.mx[,ubc.idx]
+dim(gt.ubc.df)
+
+# Calculate AF, AC and AN from genotypes
+AC.ubc <- apply(gt.ubc.df, 1, sum, na.rm=TRUE)
+AN.ubc <- apply(gt.ubc.df, 1, AN.fn)
+AF.ubc <- AC.ubc / AN.ubc
+hist(AF.ubc, breaks=seq(0,1,0.01))
+
+afs.ubc.df <- cbind(AF.ubc, AC.ubc, AN.ubc)
+rm(gt.ubc.df, ubc.idx, AF.ubc, AC.ubc, AN.ubc)
+
+```
+
+# Calculate AFs for Unilateral Sporadic UBC (USBC)
+
+```{r calculate_usbc_afs}
+
+# Select usbc cases
+# coding: 1=Case/Familial, 0=Control/Sporadic 
+#(Confirmed by DC in e-mail to EF of 29-30Mar2016)
+ubc.idx <- phenotypes.df$cc == 0 
+sbc.idx <- phenotypes.df$family_history == 0 
+usbc.idx <- ubc.idx & sbc.idx
+sum(usbc.idx)
+
+gt.usbc.df <- genotypes.mx[,usbc.idx]
+dim(gt.usbc.df)
+
+# Calculate AF, AC and AN from genotypes
+AC.usbc <- apply(gt.usbc.df, 1, sum, na.rm=TRUE)
+AN.usbc <- apply(gt.usbc.df, 1, AN.fn)
+AF.usbc <- AC.usbc / AN.usbc
+hist(AF.usbc, breaks=seq(0,1,0.01))
+
+afs.usbc.df <- cbind(AF.usbc, AC.usbc, AN.usbc)
+rm(gt.usbc.df, ubc.idx, sbc.idx, usbc.idx, AF.usbc, AC.usbc, AN.usbc)
+
+```
+
+# Calculate AFs for Bilateral Familial BC (BFBC)
+
+```{r calculate_cfbc_afs}
+
+# Select cfbc cases
+# coding: 1=Case/Familial, 0=Control/Sporadic 
+#(Confirmed by DC in e-mail to EF of 29-30Mar2016)
+cbc.idx <- phenotypes.df$cc == 1 
+fbc.idx <- phenotypes.df$family_history == 1 
+cfbc.idx <- cbc.idx & fbc.idx
+sum(cfbc.idx)
+
+gt.cfbc.df <- genotypes.mx[,cfbc.idx]
+dim(gt.cfbc.df)
+
+# Calculate AF, AC and AN from genotypes
+AC.cfbc <- apply(gt.cfbc.df, 1, sum, na.rm=TRUE)
+AN.cfbc <- apply(gt.cfbc.df, 1, AN.fn)
+AF.cfbc <- AC.cfbc / AN.cfbc
+hist(AF.cfbc, breaks=seq(0,1,0.01))
+
+afs.cfbc.df <- cbind(AF.cfbc, AC.cfbc, AN.cfbc)
+rm(gt.cfbc.df, cbc.idx, fbc.idx, cfbc.idx, AF.cfbc, AC.cfbc, AN.cfbc, AN.fn)
+
+```
+
+# save_data
+
+```{r compile_and_save_data}
+
+# Check rownames
+variants <- rownames(variants.df)
+sum(variants != rownames(afs.cbc.df))
+sum(variants != rownames(afs.ubc.df))
+sum(variants != rownames(afs.cfbc.df))
+sum(variants != rownames(afs.usbc.df))
+rm(variants)
+
+# Add calculated AFs to variants descriptions
+variants.df <- cbind(variants.df, afs.gt.df, afs.cbc.df, afs.ubc.df, afs.cfbc.df, afs.usbc.df)
+rm(afs.gt.df, afs.cbc.df, afs.ubc.df, afs.cfbc.df, afs.usbc.df)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s05_add_subgroups_afs_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```

@@ -1,0 +1,130 @@
+---
+title: "Select loss of function variants, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: Mar2016
+last updated: 25Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s02_filter_mask_feb2016.RData")
+ls()
+
+dim(covar.df)
+colnames(covar.df)
+str(covar.df)
+covar.df[1:5,1:5]
+
+dim(samples.df)
+colnames(samples.df)
+str(samples.df)
+samples.df[1:5,]
+
+dim(vv.pf.df)
+colnames(vv.pf.df)
+str(vv.pf.df)
+vv.pf.df[1:5,1:3]
+
+dim(gt.pf.msk.mx)
+gt.pf.msk.mx[1:5,1:5]
+
+# Check consistence of rownames
+sum(rownames(gt.pf.msk.mx) != rownames(vv.pf.df), na.rm=TRUE)
+
+```
+
+# make_lof_index
+
+```{r make_lof_index}
+
+splice_acceptor_variant <- grepl( "splice_acceptor_variant", vv.pf.df$Consequence)
+sum(splice_acceptor_variant, na.rm=TRUE)
+
+splice_donor_variant <- grepl( "splice_donor_variant", vv.pf.df$Consequence)
+sum(splice_donor_variant, na.rm=TRUE)
+
+stop_gain <- grepl( "stop_gain", vv.pf.df$Consequence)
+sum(stop_gain, na.rm=TRUE)
+
+frameshift_variant <- grepl( "frameshift_variant", vv.pf.df$Consequence)
+sum(frameshift_variant, na.rm=TRUE)
+
+stop_lost <- grepl( "stop_lost", vv.pf.df$Consequence)
+sum(stop_lost, na.rm=TRUE)
+
+start_lost <- grepl( "start_lost", vv.pf.df$Consequence)
+sum(start_lost, na.rm=TRUE)
+
+lof_variants <- splice_acceptor_variant | splice_donor_variant | stop_gain | frameshift_variant | stop_lost | start_lost
+
+sum(lof_variants)
+
+rm(splice_acceptor_variant, splice_donor_variant, stop_gain, frameshift_variant, stop_lost, start_lost)
+
+```
+
+# select_lof_variants
+
+```{r select_lof_variants}
+
+gt.pf.msk.lof.mx <- gt.pf.msk.mx[lof_variants,]
+vv.pf.lof.df <- vv.pf.df[lof_variants,]
+
+rm(gt.pf.msk.mx, vv.pf.df, lof_variants)
+
+```
+
+# explore_result
+
+```{r explore_result}
+
+dim(gt.pf.msk.lof.mx)
+dim(vv.pf.lof.df)
+
+# Explore selected genes 
+# Note that sum of AFs per gene may exceed 1
+
+vv.pf.lof.df[vv.pf.lof.df$SYMBOL=="NPHP4",c("SYMBOL","AF","AC","AN")]
+vv.pf.lof.df[vv.pf.lof.df$SYMBOL=="OR4C5",c("SYMBOL","AF","AC","AN")]
+vv.pf.lof.df[vv.pf.lof.df$SYMBOL=="SARM1",c("SYMBOL","AF","AC","AN")]
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s03_select_lof_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```

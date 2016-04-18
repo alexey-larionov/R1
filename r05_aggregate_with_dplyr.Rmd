@@ -1,0 +1,117 @@
+---
+title: "Explore methods to aggregate variants, using lof wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 04Apr2016
+last_updated:04Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+library(dplyr)
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s05_add_subgroups_afs_feb2016.RData")
+ls()
+
+dim(genotypes.mx)
+genotypes.mx[1:5,1:5]
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+dim(variants.df)
+colnames(variants.df)
+str(variants.df)
+variants.df[1:5,1:5]
+
+# Check consistence of tables
+sum(rownames(genotypes.mx) != rownames(variants.df))
+sum(colnames(genotypes.mx) != rownames(phenotypes.df))
+
+```
+
+# add_genes_to_genotypes
+
+```{r add_genes_to_genotypes}
+
+genotypes.df <- cbind(variants.df$SYMBOL, as.data.frame(genotypes.mx))
+colnames(genotypes.df)[1] <- "gene"
+summary(genotypes.df[,1:5])
+str(genotypes.df[,1:5])
+sum(genotypes.df[1:50,2:50], na.rm=TRUE)
+
+```
+
+# aggregate_using_base_r
+
+```{r aggregate_using_base_r}
+
+a <- aggregate(variants.df[,c("AF", "AF.cbc", "AF.ubc")], list(gene=variants.df$SYMBOL), sum, na.rm=TRUE)
+colnames(a) <- c("gene","BD","BD.cbc","BD.ubc")
+
+b <- aggregate(genotypes.df[,-1], list(gene=genotypes.df$gene), sum, na.rm=TRUE)
+
+```
+
+# aggregate_using_dplyr
+
+```{r aggregate_by_gene_using_dplyr}
+
+c <- genotypes.df %>% group_by(gene) %>% 
+  summarise(BD=sum(AF, na.rm=TRUE), 
+            BD.cbc=sum(AF.cbc, na.rm=TRUE),
+            BD.ubc=sum(AF.ubc, na.rm=TRUE))
+
+d <- variants.df %>% group_by(SYMBOL) %>% 
+  summarise(AF=sum(P1_A01_id203568, na.rm=TRUE), 
+            P1_A02_id357807=sum(P1_A02_id357807, na.rm=TRUE),
+            P1_A03_id325472=sum(P1_A03_id325472, na.rm=TRUE))
+
+```
+
+# aggregate_using_loop
+
+```{r aggregate_using_loop}
+
+
+```
+
+# save_data
+
+```{r save_data}
+
+
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```

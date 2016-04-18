@@ -1,0 +1,114 @@
+---
+title: "Select loss of function variants in 1k"
+author: "AL"
+output: html_document
+---
+
+started: Mar2016
+last_updated:26Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s07_read_1k.RData")
+ls()
+
+dim(ph3_1k.df)
+colnames(ph3_1k.df)
+str(ph3_1k.df)
+ph3_1k.df[1:5, 1:7]
+
+```
+
+# select_lof_variants
+
+```{r select_lof_variants}
+
+splice_acceptor_variant <- grepl( "splice_acceptor_variant", ph3_1k.df$Consequence)
+sum(splice_acceptor_variant, na.rm=TRUE)
+
+splice_donor_variant <- grepl( "splice_donor_variant", ph3_1k.df$Consequence)
+sum(splice_donor_variant, na.rm=TRUE)
+
+stop_gain <- grepl( "stop_gain", ph3_1k.df$Consequence)
+sum(stop_gain, na.rm=TRUE)
+
+frameshift_variant <- grepl( "frameshift_variant", ph3_1k.df$Consequence)
+sum(frameshift_variant, na.rm=TRUE)
+
+stop_lost <- grepl( "stop_lost", ph3_1k.df$Consequence)
+sum(stop_lost, na.rm=TRUE)
+
+start_lost <- grepl( "start_lost", ph3_1k.df$Consequence)
+sum(start_lost, na.rm=TRUE)
+
+lof_variants <- splice_acceptor_variant | splice_donor_variant | stop_gain | frameshift_variant | stop_lost | start_lost
+
+sum(lof_variants)
+sum(lof_variants)/nrow(ph3_1k.df)
+
+rm(splice_acceptor_variant, splice_donor_variant, stop_gain, frameshift_variant, stop_lost, start_lost)
+
+```
+
+# retain_only_lof_variants
+
+```{r retain_only_lof_variants}
+
+ph3_1k.lof.df <- ph3_1k.df[lof_variants,]
+rm(ph3_1k.df,lof_variants)
+
+```
+
+# explore_result
+
+```{r explore_result}
+
+dim(ph3_1k.lof.df)
+colnames(ph3_1k.lof.df)
+str(ph3_1k.lof.df)
+ph3_1k.lof.df[1:5, 1:7]
+
+# Explore selected genes 
+# (could be done by dplyr ph3_1k.lof.df %>% select("AF", "AC", "AN") %>% filter(SYMBOL=="NPHP4"))
+# Note that sum of AFs per gene may exceed 1
+ph3_1k.lof.df[ph3_1k.lof.df$SYMBOL=="NPHP4", c("AF", "AC", "AN")]
+ph3_1k.lof.df[ph3_1k.lof.df$SYMBOL=="SARM1", c("AF", "AC", "AN")]
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s08_select_lof_1k.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```

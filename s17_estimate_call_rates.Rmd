@@ -1,0 +1,165 @@
+---
+title: "Estimate the call rates, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 13Apr2016
+last updated: 14Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+library(ggplot2)
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s02_filter_mask_feb2016.RData")
+ls()
+rm(covar.df, samples.df, vv.pf.df)
+
+dim(gt.pf.msk.mx)
+gt.pf.msk.mx[1:5,1:5]
+
+load(file="data/s04_reshape_data_feb2016.RData")
+ls()
+rm(variants.df, genotypes.mx)
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+```
+
+# reshape_data
+
+```{r reshape_data}
+
+# Update table name and colnames for genotypes
+genotypes.mx <- gt.pf.msk.mx
+rm(gt.pf.msk.mx)
+colnames(genotypes.mx) <- sub(".GT","",colnames(genotypes.mx))
+
+# Update rownames for phenotypes
+rownames(phenotypes.df) <- phenotypes.df$wes_id
+
+# Select relevant genotypes
+genotypes.mx <- genotypes.mx[,rownames(phenotypes.df)]
+dim(genotypes.mx)
+
+```
+
+# calculate_call_rates_per_variant
+
+```{r calculate_call_rates_per_variant}
+
+# Functuion to calculate call rate
+CR <- function(x){sum(!is.na(x))/length(x)}
+
+# Indices for cases and controls
+cbc <- phenotypes.df$cc == 1
+sum(cbc)
+
+ubc <- phenotypes.df$cc == 0
+sum(ubc)
+
+# Overall call rate per variant
+overall.cr.v <- apply(genotypes.mx, 1, CR)
+hist(overall.cr.v)
+mean(overall.cr.v)
+
+ggplot(as.data.frame(overall.cr.v), aes(overall.cr.v)) + 
+  geom_histogram(colour="black", fill="blue", alpha=0.2, binwidth=0.05) + 
+  xlim(c(0,1)) + 
+  ggtitle("cr.v")
+
+# Call rate per variant in cases
+cbc.cr.v <- apply(genotypes.mx[,cbc], 1, CR)
+hist(cbc.cr.v)
+
+# Call rate per variant in controls
+ubc.cr.v <- apply(genotypes.mx[,ubc], 1, CR)
+hist(ubc.cr.v)
+
+```
+
+# compare_call_rates_per_variant_in_cases_and_controls
+
+```{r compare_call_rates_per_variant_in_cases_and_controls}
+
+# Barplots
+x <- c(mean(ubc.cr.v), mean(cbc.cr.v))
+names(x) <- c(paste("ubc:",round(mean(ubc.cr.v),2)),
+              paste("cbc:",round(mean(cbc.cr.v),2)))
+barplot(x, ylim=c(0,1), main="Mean call rates per variant")
+rm(x)
+
+# Scatterplot
+plot(cbc.cr.v, ubc.cr.v)
+
+# Histogram of differences
+cr.v.diff <- cbc.cr.v - ubc.cr.v
+hist(cr.v.diff)
+
+# AB-plot for differences 
+cr.v.avg <- cbc.cr.v + ubc.cr.v / 2
+plot(cr.v.avg, cr.v.diff)
+
+```
+
+# calculate_and_compare_call_rates_per_individual
+
+```{r calculate_and_compare_call_rates_per_individual}
+
+# Overall call rate per individual
+overall.cr.i <- apply(genotypes.mx, 2, CR)
+
+cc.cr.df <- cbind(phenotypes.df[,c("wes_id","cc")], overall.cr.i)
+str(cc.cr.df)
+cc.cr.df$cc <- as.factor(cc.cr.df$cc)
+str(cc.cr.df)
+
+ggplot(cc.cr.df, aes(overall.cr.i)) + 
+  geom_histogram(colour="black", alpha=0.5, binwidth=0.05) + 
+  aes(fill=cc) + 
+  xlim(c(0,1)) + 
+  ggtitle("cr.i")
+
+mean(overall.cr.i)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s17_estimate_call_rates_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```

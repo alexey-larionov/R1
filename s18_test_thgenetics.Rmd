@@ -1,0 +1,151 @@
+---
+title: "test thgenetics package"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 14Apr2016
+last updated: 14Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+library(thgenetics)
+#?rareGeneTest
+#?rarePathwayTest
+
+```
+
+# simulate_data
+
+```{r simulate_data}
+
+## This inefficient (for clarity) code will simulate a dataset in the
+##  correct format, and then run the different approaches described here.
+
+## Constants for data generation
+NCASE <- NCONT <- 500
+NGENE <- 6
+
+FUNCTIONAL <- 1:(NGENE/2)  ## Half are functional
+nonfunctional <- setdiff(1:NGENE, FUNCTIONAL)
+
+BETA0 <- -4
+BETAG <- log(2)
+
+# Generate allele frequencies
+SEED <- 2
+set.seed(SEED) ## Reproducible results
+afreq <- runif(NGENE, 0.001, 0.01)
+
+# Function to get probability from logit (inverse to logit)
+expit <- function(x){ return(exp(x) / (1 + exp(x))) }
+
+# Empty matrix for cases' genotypes
+gcase <- matrix(0, nrow=NCASE, ncol=NGENE)
+
+# For each case
+for(indiv in 1:NCASE){
+  
+  # Progress report
+  #cat("\rgenerating case:", indiv, "of", NCASE)
+  
+  # Repeat until genotype appropriate genotype is generated
+  affected <- FALSE
+  while(!affected){ ## while not affected
+    
+    # Draw up random genotype
+    gcase[indiv, ] <- rbinom(NGENE, 2, afreq)  
+    
+    # Keep genotype if probability of being affected is > than random
+    affected <- (expit(BETA0 + BETAG*sum(gcase[indiv, FUNCTIONAL])) > runif(1))
+  
+  }
+}
+cat("\n")
+
+# Generate controls' genotypes
+gcont <- matrix(0, nrow=NCONT, ncol=NGENE)
+for(indiv in 1:NCONT){
+  
+  #cat("\rgenerating control:", indiv, "of", NCONT)
+  
+  unaffected <- FALSE
+  while(!unaffected){ ## while not unaffected
+    
+    # Draw up random genotype
+    gcont[indiv, ] <- rbinom(NGENE, 2, afreq)
+    
+    # Keep genotype if probability of bein non-affected is < than random
+    unaffected <- (1-expit(BETA0 + BETAG*sum(gcont[indiv, FUNCTIONAL])) > runif(1))
+    
+  }
+}
+cat("\n")
+
+cat("# Rare functional variants cases =", sum(gcase[,FUNCTIONAL]), "\n")
+cat("# Rare functional variants controls =", sum(gcont[,FUNCTIONAL]), "\n")
+cat("# Rare non-functional variants cases =", sum(gcase[,nonfunctional]), "\n")
+cat("# Rare non-functional variants controls =", sum(gcont[,nonfunctional]), "\n")
+
+x <- matrix(c(sum(gcase[,FUNCTIONAL]), sum(gcont[,FUNCTIONAL]),
+              sum(gcase[,nonfunctional]), sum(gcont[,nonfunctional])), nrow=2)
+rownames(x) <- c("cases","controls")
+colnames(x) <- c("FUNCTIONAL","non-functional")
+x
+
+case <- c(rep(1,NCASE), rep(0,NCONT))
+genotype <- rbind(gcase, gcont)
+
+rm(x, affected, afreq, BETA0, BETAG, FUNCTIONAL, indiv, NCASE, NCONT, NGENE, nonfunctional, SEED, unaffected, expit, gcase, gcont)
+
+```
+
+# run_rareGeneTest
+
+```{r run_rareGeneTest}
+
+cat("P-value of the gene test:\n")
+rareGeneTest(genotype, case)
+
+```
+
+# run_rarePathwayTest
+
+```{r run_rarePathwayTest}
+
+cat("P-value of the pathway test:\n")
+rarePathwayTest(genotype, case, genotype_gene= c("brca1", "brca1", "brca1", "brca2", "brca2") )
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s18_testthgenetics.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```
+

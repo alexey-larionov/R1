@@ -1,0 +1,97 @@
+---
+title: "Select loss of function variants, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: Mar2016
+last updated: 25Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s02_filter_mask_feb2016.RData")
+ls()
+
+dim(covar.df)
+colnames(covar.df)
+str(covar.df)
+covar.df[1:5,1:5]
+
+dim(samples.df)
+colnames(samples.df)
+str(samples.df)
+samples.df[1:5,]
+
+dim(vv.pf.df)
+colnames(vv.pf.df)
+str(vv.pf.df)
+vv.pf.df[1:5,1:3]
+
+dim(gt.pf.msk.mx)
+gt.pf.msk.mx[1:5,1:5]
+
+# Check consistence of rownames
+sum(rownames(gt.pf.msk.mx) != rownames(vv.pf.df), na.rm=TRUE)
+
+```
+
+# add_merged_case_names_to_gt
+
+```{r add_merged_case_names_to_gt}
+
+# Add annotations to samples df file
+
+# Update the rownames and colnames to wes ids
+rownames(samples.df) <- samples.df$wes_id
+colnames(gt.pf.msk.mx) <- sub(".GT","",colnames(gt.pf.msk.mx))
+
+# 
+sequenced.cases <- intersect(colnames(gt.pf.msk.mx), rownames(samples.df)) # 493
+
+sequenced.annotated.cases <- covar.df$labid %in% samples.df[sequenced.cases, "gwas_id"] # 483
+sequenced.annotated.cases.gwas_ids <- covar.df[sequenced.annotated.cases, "labid"]
+
+
+
+sum(x)
+annotated.cases <- samples.df[sequenced.cases, "gwas_id"]
+
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s03_select_lof_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```

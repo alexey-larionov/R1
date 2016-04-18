@@ -1,0 +1,182 @@
+---
+title: "Analyse association of lof burdens with cbc/ubc status in wecare feb2016"
+author: "AL"
+output: html_document
+---
+
+started: Mar2016
+last_updated:05Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+# Load required libraries
+library(statmod)
+library(dplyr)
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+# Read
+load(file="data/s06_aggregate_lof_feb2016.RData")
+ls()
+
+# Remove irrelevant data
+rm("burden.per.gene.wecare.df", "variants.df")
+
+dim(events.per.gene.wecare.df)
+events.per.gene.wecare.df[1:5,1:5]
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+# Make sure rows in phenotypes are coherent woth columns in events
+sum(rownames(phenotypes.df) != colnames(events.per.gene.wecare.df[,-1]))
+
+```
+
+# do_analysis
+
+```{r do_analysis}
+
+# Make data names and structures coherent with DC's scripts
+g <- events.per.gene.wecare.df[,-1]
+dim(g)
+g[1:5,1:5]
+
+d <- phenotypes.df[,-1]
+dim(d)
+d[1:5,1:5]
+
+# Set data for null-model (name coherent with DC scripts)
+Y <- d$cc
+Q <- cbind(d$Eigen_1, d$Eigen_2, d$Eigen_3)
+W <- cbind(d$sub_dx_age)
+
+# Handle NAs in Y
+keep <- !is.na(Y)
+
+# Make header for the results table
+r.table <- c("Gene", "Estimate", "SE", "P.Wald", "P.LRT", "P.Score")
+
+# For each gene
+genes <- rownames(g)
+for (gene in genes) {
+  
+  # Get values for modelling
+  v <- as.numeric(g[gene,])
+  
+  # calculate null model (excluding missing values for the gene)
+  reg.null <- glm(Y ~ W + Q, family = binomial, subset = !is.na(v))
+
+  # calculate full model
+  reg <- glm(Y ~ v + W+Q, family = binomial)
+  
+	# Estimate difference between models
+	chi.stat.LRT = 2*(logLik(reg) - logLik(reg.null))
+	P.LRT = 1 - pchisq(chi.stat.LRT, df=1)
+	
+	Score.Z = glm.scoretest(reg.null, v[keep], dispersion=NULL)
+	P.Score = 2 * (1 - pnorm(abs(Score.Z)))
+	
+	# Estimate, SE and P.Wald
+	if ("v" %in% rownames(summary(reg)$coefficients)){
+		Estimate <- coef(summary(reg))["v", "Estimate"]
+		SE <- coef(summary(reg))["v", "Std. Error"]
+		P.Wald <- coef(summary(reg))["v", "Pr(>|z|)"]
+	}	else {
+		Estimate <- NA
+		SE <- NA
+		P.Wald <- NA
+  }
+  
+	# Summarise results for the gene
+  r <- c(gene, round(Estimate,3), round(SE,3), 
+         format(P.Wald, scientific=T, digits=3), 
+         format(P.LRT, scientific=T, digits=3), 
+         format(P.Score, scientific=T, digits=3))
+
+  # Add gene the results table
+  r.table <- rbind(r.table, r)
+	
+} 
+
+# Clean-up
+rm(g, d, Y, Q, W, keep, gene, genes, v, reg, reg.null, r, 
+   chi.stat.LRT, P.LRT, Score.Z, P.Score, Estimate, SE, P.Wald)
+
+```
+
+# reshape_results_table
+
+```{r reshape_results_table}
+
+# Save column and row names
+c.names <- r.table[1,]
+r.names <- r.table[,1]
+
+# Convert data to numeric
+r.table <- r.table[-1,-1]
+r.table <- matrix(as.numeric(r.table), nrow=nrow(r.table))
+
+# Convert NaNs to NAs
+NA -> r.table[is.nan(r.table)]
+
+# Convert matrix to df with numeric columns
+reg.results.df <- as.data.frame(r.table)
+
+# Restore column and row names
+reg.results.df <- cbind(r.names[-1], reg.results.df)
+colnames(reg.results.df) <- c.names
+
+# Sort by P.LRT
+reg.results.df <- reg.results.df %>% arrange(P.LRT)
+
+# Remove genes with low SE
+top.genes.df <- reg.results.df %>% filter(SE <= 3)
+dim(top.genes.df)
+top.genes.df[1:100,]
+
+# Save results to text files
+write.table(reg.results.df, "results/RegressionResults.txt", sep="\t", quote=FALSE)
+write.table(top.genes.df, "results/TopGenes.txt", sep="\t", quote=FALSE)
+
+# Clean-up
+rm(c.names, r.names, r.table)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s12_analyse_cc.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```
