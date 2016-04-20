@@ -1,0 +1,70 @@
+---
+title: "Generate variant sets"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 19Apr2016
+last updated: 19Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Time stamp
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/fmg")
+#setwd("/scratch/medgen/users/alexey/fmg")
+
+```
+
+# generate_all_possible_sets_of_variants
+
+```{r generate_all_possible_subsets_of_variants}
+
+# Simulate gene data
+gene <- data.frame(SYMBOL=c("XYZ", "XYZ", "XYZ", "XYZ", "XYZ"), Variants=c("var1", "var2", "var3", "var4", "var5"))
+gene
+
+# Gen number of variants
+nvars <- nrow(gene)
+
+# Initialise counter of warsets
+nsets <- 0
+
+# Make empty list for varsets
+# (list size is calculated as triangle number of nvars)
+varsets <- vector("list",nvars*(nvars-1)/2)
+
+# Generate all possible sets of variants
+for (a in 1:nvars){
+  for (b in a:nvars){
+    nsets <- nsets + 1
+    c <- seq(a,b)
+    varsets[[nsets]] <- c
+  }
+}
+
+# Cleanup
+rm(a,b,c)
+
+# Show results
+for (i in varsets) print(i)
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```
