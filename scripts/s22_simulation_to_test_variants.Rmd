@@ -1,0 +1,206 @@
+---
+title: "Simulate data and explore rare varints tests"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 24Apr2016
+last updated: 24Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Time stamp
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# simulate_data
+
+```{r simulate_data}
+
+# Outcomes: 100 cases (1) and 100 controls (0)
+Y <- c(rep(1,100),rep(0,100))
+
+# Genotypes matrix
+G <- matrix(rep(0,1400), nrow=7)
+
+# Variant 1: common, risk [20 of 100] vs [10 of 100]
+G[1,1:20] <- rep(1,20)
+G[1,101:110]  <- rep(1,10)
+
+# Variant 2: rare, risk [2 of 100] vs [1 of 100]
+G[2,1:2] <- rep(1,2)
+G[2,101]  <- 1
+
+# Variant 3: common, protective [10 of 100] vs [20 of 100]
+G[3,1:10] <- rep(1,10)
+G[3,101:120]  <- rep(1,20)
+
+# Variant 4: rare, protective [1 of 100] vs [2 of 100]
+G[4,1] <- 1
+G[4,101:102]  <- rep(1,2)
+
+# Variant 5: rare, no association [2 of 100] vs [2 of 100]
+G[5,1:2] <- rep(1,2)
+G[5,101:102]  <- rep(1,2)
+
+# Variant 6: common, no association [20 of 100] vs [20 of 100]
+G[6,1:20] <- rep(1,20)
+G[6,101:120]  <- rep(1,20)
+
+# Variant 7: common, near perfect association [99 of 100] vs [1 of 100]
+G[7,1:99] <- rep(1,99)
+G[7,101]  <- 1
+
+# Covariates matrix
+#D <- 
+
+```
+
+# explore_model_for_Variant_1
+common, risk [20 of 100] vs [10 of 100]
+
+```{r explore_model_for_Variant_1}
+
+Var1 <- G[1,]
+M1 <-glm(Y ~ Var1, family = binomial(link = "logit")) 
+summary(M1)
+coef(summary(M1))["Var1", "Estimate"]
+coef(summary(M1))["Var1", "Std. Error"]
+coef(summary(M1))["Var1", "z value"]
+coef(summary(M1))["Var1", "Pr(>|z|)"]
+logLik(M1)
+rm(Var1)
+
+```
+
+# explore_model_for_Variant_2
+rare, risk [2 of 100] vs [1 of 100]
+
+```{r explore_model_for_Variant_2}
+
+Var2 <- G[2,]
+M2 <-glm(Y ~ Var2, family = binomial(link = "logit")) 
+summary(M2)
+coef(summary(M2))["Var2", "Estimate"]
+coef(summary(M2))["Var2", "Std. Error"]
+coef(summary(M2))["Var2", "z value"]
+coef(summary(M2))["Var2", "Pr(>|z|)"]
+logLik(M2)
+rm(Var2)
+
+```
+
+# explore_model_for_Variant_3
+common, protective [10 of 100] vs [20 of 100]
+
+```{r explore_model_for_Variant_3}
+
+Var3 <- G[3,]
+M3 <-glm(Y ~ Var3, family = binomial(link = "logit")) 
+summary(M3)
+coef(summary(M3))["Var3", "Estimate"]
+coef(summary(M3))["Var3", "Std. Error"]
+coef(summary(M3))["Var3", "z value"]
+coef(summary(M3))["Var3", "Pr(>|z|)"]
+logLik(M3)
+rm(Var3)
+
+```
+
+# explore_model_for_Variant_4
+rare, protective [1 of 100] vs [2 of 100]
+
+```{r explore_model_for_Variant_4}
+
+Var4 <- G[4,]
+M4 <-glm(Y ~ Var4, family = binomial(link = "logit")) 
+summary(M4)
+coef(summary(M4))["Var4", "Estimate"]
+coef(summary(M4))["Var4", "Std. Error"]
+coef(summary(M4))["Var4", "z value"]
+coef(summary(M4))["Var4", "Pr(>|z|)"]
+logLik(M4)
+rm(Var4)
+
+```
+
+# explore_model_for_Variant_5
+rare, no association [2 of 100] vs [2 of 100]
+
+```{r explore_model_for_Variant_5}
+
+Var5 <- G[5,]
+M5 <-glm(Y ~ Var5, family = binomial(link = "logit")) 
+summary(M5)
+coef(summary(M5))["Var5", "Estimate"]
+coef(summary(M5))["Var5", "Std. Error"]
+coef(summary(M5))["Var5", "z value"]
+coef(summary(M5))["Var5", "Pr(>|z|)"]
+logLik(M5)
+rm(Var5)
+
+```
+
+# explore_model_for_Variant_6
+common, no association [20 of 100] vs [20 of 100]
+
+```{r explore_model_for_Variant_6}
+
+Var6 <- G[6,]
+M6 <-glm(Y ~ Var6, family = binomial(link = "logit")) 
+summary(M6)
+coef(summary(M6))["Var6", "Estimate"]
+coef(summary(M6))["Var6", "Std. Error"]
+coef(summary(M6))["Var6", "z value"]
+coef(summary(M6))["Var6", "Pr(>|z|)"]
+logLik(M6)
+rm(Var6)
+
+```
+
+# explore_model_for_Variant7
+near absolute association [99 of 100] vs [1 of 100]
+
+```{r explore_model_for_absolute_association}
+
+Var7 <- G[7,]
+M7 <-glm(Y ~ Var7, family = binomial(link = "logit")) 
+summary(M7)
+coef(summary(M7))["Var7", "Estimate"]
+coef(summary(M7))["Var7", "Std. Error"]
+coef(summary(M7))["Var7", "z value"]
+coef(summary(M7))["Var7", "Pr(>|z|)"]
+logLik(M7)
+rm(Var7)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s22_simulation_to_test_variants.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```
+
