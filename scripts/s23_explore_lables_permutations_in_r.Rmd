@@ -1,0 +1,106 @@
+---
+title: "Explore permutations of labels in R"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 25Apr2016
+last updated: 25Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Time stamp
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scri pts/rscripts_05.16")
+
+```
+
+# simulate_data
+
+```{r simulate_data}
+
+x <- c(rep("a",3),rep("b",2))
+x
+
+```
+
+# number_of_permutations_for_binary_label
+
+```{r number_of_permutations_for_binary_label}
+
+# 5 = total number of labels (samples)
+# 2/3 = number of one of the labels (for binary label only!)
+
+choose(5,2)
+choose(5,3)
+
+```
+
+# a_random_permutation
+
+```{r a_random_permutation}
+
+for (i in 1:10) {
+  cat(sample(x), "\n")
+}
+
+```
+
+# all_labels_permutations
+Computationally VERY in-efficient prototype
+Limited to up to ~500 permutations (e.g. 5 cases & 5 controls)
+Attempting ~1000 permutations(6 cases and 6 controls) takes hours and runs out of memory
+
+```{r all_labels_permutations}
+
+n.cases <- 5
+n.controls <- 5
+n.lab.permutations <- choose(n.cases+n.controls,n.cases)
+
+if (n.lab.permutations < 500){
+
+  library(gtools)
+  a <- c(rep(1,n.cases),rep(0,n.controls))
+  b <- length(a)
+  
+  c <- matrix(a[permutations(b,b)],ncol=b)
+  d <- nrow(c)
+  e <- unique(c[1:d,])
+  
+}
+
+a
+b
+dim(c)
+d
+e
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s23_explore_lables_permutations.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```
+
