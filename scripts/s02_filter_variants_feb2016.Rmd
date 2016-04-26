@@ -24,7 +24,7 @@ library(knitr)
 #opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
 #setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
 
-opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
+#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
 #setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
 
 ```

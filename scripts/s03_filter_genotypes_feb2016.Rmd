@@ -1,11 +1,11 @@
 ---
-title: "Filter and mask variants, wecare feb2016"
+title: "Filter genotypes, wecare feb2016"
 author: "Alexey Larionov"
 output: html_document
 ---
 
 started: Mar2016
-last updated: 29Mar2016
+last updated: 26Apr2016
 
 # start_section
 
@@ -24,7 +24,7 @@ library(knitr)
 #opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
 #setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
 
-opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
+#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
 #setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
 
 ```
