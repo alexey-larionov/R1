@@ -26,7 +26,7 @@ graphics.off()
 # Set root working folder
 library(knitr)
 
-#opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
 #setwd("/scratch/medgen/scripts/rscripts_05.16")
 
 #opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
@@ -104,10 +104,10 @@ sum(substr(colnames(gt.pf.df),0,6) != substr(colnames(ad.pf.df),0,6), na.rm=TRUE
 ```{r prepare_tables}
 
 # Reduce data size for development
-#gt.pf.df <- gt.pf.df[1:1000,]
-#gq.pf.df <- gq.pf.df[1:1000,]
-#dp.pf.df <- dp.pf.df[1:1000,]
-#ad.pf.df <- ad.pf.df[1:1000,]
+#gt.pf.df <- gt.pf.df[10000:11000,]
+#gq.pf.df <- gq.pf.df[10000:11000,]
+#dp.pf.df <- dp.pf.df[10000:11000,]
+#ad.pf.df <- ad.pf.df[10000:11000,]
 
 # Converet to matrices
 gt.mx <- as.matrix(gt.pf.df)
@@ -192,14 +192,26 @@ for (row in 1:nrow(gt.mx)){
       sum <- ref + alt
       maf <- min(ref,alt)/sum
       
+      # Remove genotypes if sum==0
+      if( sum == 0 ){ 
+        NA -> gt.mx[row,col]
+        next
+      }
+      
       # Remove homozigous genotypes with high maf
       if(gt.mx[row,col]==0 | gt.mx[row,col]==2){
-        if(maf > hom.maf.max){ NA -> gt.mx[row,col] }
+        if(maf > hom.maf.max){ 
+          NA -> gt.mx[row,col] 
+          next
+        }
       }
       
       # Remove heterozigous genotypes with low maf
       if(gt.mx[row,col]==1){
-        if(maf < het.maf.min){ NA -> gt.mx[row,col] }
+        if(maf < het.maf.min){ 
+          NA -> gt.mx[row,col] 
+          next
+        }
       }
       
     }
