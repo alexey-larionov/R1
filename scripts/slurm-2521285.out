@@ -1,0 +1,72 @@
+Job name: run_rmd
+Allocated node: sand-1-22
+Initial working folder:
+/scratch/medgen/scripts/rscripts_05.16/scripts
+
+ ------------------ Output ------------------ 
+
+
+R version 3.2.2 (2015-08-14) -- "Fire Safety"
+Copyright (C) 2015 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library('rmarkdown',lib='/scratch/medgen/tools/r/R-3.2.2/lib64/R/library/')
+> render('/scratch/medgen/scripts/rscripts_05.16/scripts/s03_filter_genotypes_feb2016.Rmd',output_file='/scratch/medgen/scripts/rscripts_05.16/scripts/s03_filter_genotypes_feb2016.html')
+
+
+processing file: s03_filter_genotypes_feb2016.Rmd
+  |                                                                         |                                                                 |   0%  |                                                                         |...                                                              |   5%
+  ordinary text without R code
+
+  |                                                                         |.......                                                          |  11%
+label: start_section
+  |                                                                         |..........                                                       |  16%
+  ordinary text without R code
+
+  |                                                                         |..............                                                   |  21%
+label: filtering_settings
+  |                                                                         |.................                                                |  26%
+  ordinary text without R code
+
+  |                                                                         |.....................                                            |  32%
+label: load_and_check_data
+  |                                                                         |........................                                         |  37%
+  ordinary text without R code
+
+  |                                                                         |...........................                                      |  42%
+label: prepare_tables
+  |                                                                         |...............................                                  |  47%
+  ordinary text without R code
+
+  |                                                                         |..................................                               |  53%
+label: filter_by_gq
+  |                                                                         |......................................                           |  58%
+  ordinary text without R code
+
+  |                                                                         |.........................................                        |  63%
+label: filter_by_dp
+  |                                                                         |............................................                     |  68%
+  ordinary text without R code
+
+  |                                                                         |................................................                 |  74%
+label: filter_by_ad
+Quitting from lines 181-214 (s03_filter_genotypes_feb2016.Rmd) 
+Error in if (maf > hom.maf.max) { : missing value where TRUE/FALSE needed
+Calls: render ... handle -> withCallingHandlers -> withVisible -> eval -> eval
+
+Execution halted
+Script completed

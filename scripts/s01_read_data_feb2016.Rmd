@@ -5,7 +5,7 @@ output: html_document
 ---
 
 started: Mar2016
-last updated: 25Mar2016
+last updated: 26Apr2016
 
 # start_section
 
@@ -21,8 +21,8 @@ graphics.off()
 # Set root working folder
 library(knitr)
 
-#opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
-#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scripts/rscripts_05.16")
 
 #opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
 #setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")

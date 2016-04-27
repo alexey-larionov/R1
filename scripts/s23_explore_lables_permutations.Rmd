@@ -1,0 +1,109 @@
+---
+title: "Explore permutations of labels in R"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: 25Apr2016
+last updated: 25Apr2016
+
+# start_section
+
+```{r start_section}
+
+# Time stamp
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scri pts/rscripts_05.16")
+
+```
+
+# simulate_data
+
+```{r simulate_data}
+
+x <- c(rep("a",3),rep("b",2))
+x
+
+```
+
+# number_of_permutations_for_binary_label
+
+```{r number_of_permutations_for_binary_label}
+
+# 5 = total number of labels (samples)
+# 2/3 = number of one of the labels (for binary label only!)
+
+choose(5,2)
+choose(5,3)
+
+```
+
+# get_a_random_permutation
+
+```{r get_a_random_permutation}
+
+for (i in 1:10) {
+  cat(sample(x), "\n")
+}
+
+```
+
+# get_all_permutations_of_two_labels
+
+```{r get_all_permutations_of_two_labels}
+
+# Set numbers of cases and controls
+n.cases <- 4 # coded 1
+n.controls <- 5 # coded 0
+
+# Calculate total number of samples
+n.total <- n.cases + n.controls
+
+# Calculate number of permutations
+n.prm <- choose(n.total, n.cases)
+
+# If number of all permutations is reasonable
+if (n.prm < 5000){
+
+  # Make matrix for permutations (permutations will be in rows)
+  prm.mx <- matrix(rep(0,n.prm*n.total), nrow=n.prm)
+
+  # All possible positions of n.cases in a string of n.total length
+  cases.ind <- t(combn(n.total, n.cases)) 
+
+  # Place 1s at the cases positions
+  for(i in 1:n.prm) 1 -> prm.mx[i,cases.ind[i,]]
+
+  # Show results
+  dim(prm.mx)
+  prm.mx
+
+}
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s22_simulation_to_test_variants.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```
+

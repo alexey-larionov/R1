@@ -5,7 +5,12 @@ output: html_document
 ---
 
 started: Mar2016
-last updated: 26Apr2016
+last updated: 27Apr2016
+
+Takes ~2hrs for wecare dataset 
+because of two cycles in
+(i) ad table splitting and 
+(ii) filtering by ad
 
 # start_section
 
@@ -21,11 +26,23 @@ graphics.off()
 # Set root working folder
 library(knitr)
 
-#opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
-#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scripts/rscripts_05.16")
 
 #opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
 #setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
+
+```
+
+# filtering_settings
+
+```{r filtering_settings}
+
+min.dp <- 10
+min.gq <- 20
+
+hom.maf.max <- 5
+het.maf.min <- 25
 
 ```
 
@@ -75,7 +92,7 @@ sum(rownames(gt.pf.df) != rownames(gq.pf.df), na.rm=TRUE)
 sum(rownames(gt.pf.df) != rownames(dp.pf.df), na.rm=TRUE)
 sum(rownames(gt.pf.df) != rownames(ad.pf.df), na.rm=TRUE)
 
-# Check consistence of colnames
+# Check consistence of colnames (sub(".DP","") may be used instead)
 sum(substr(colnames(gt.pf.df),0,6) != substr(colnames(gq.pf.df),0,6), na.rm=TRUE)
 sum(substr(colnames(gt.pf.df),0,6) != substr(colnames(dp.pf.df),0,6), na.rm=TRUE)
 sum(substr(colnames(gt.pf.df),0,6) != substr(colnames(ad.pf.df),0,6), na.rm=TRUE)
@@ -86,27 +103,49 @@ sum(substr(colnames(gt.pf.df),0,6) != substr(colnames(ad.pf.df),0,6), na.rm=TRUE
 
 ```{r prepare_tables}
 
+# Reduce data size for development
+#gt.pf.df <- gt.pf.df[1:1000,]
+#gq.pf.df <- gq.pf.df[1:1000,]
+#dp.pf.df <- dp.pf.df[1:1000,]
+#ad.pf.df <- ad.pf.df[1:1000,]
+
 # Converet to matrices
-gt.pf.mx <- as.matrix(gt.pf.df)
-gq.pf.mx <- as.matrix(gq.pf.df)
-dp.pf.mx <- as.matrix(dp.pf.df)
-rm(gt.pf.df, gq.pf.df, dp.pf.df)
+gt.mx <- as.matrix(gt.pf.df)
+gq.mx <- as.matrix(gq.pf.df)
+dp.mx <- as.matrix(dp.pf.df)
+ad.mx <- as.matrix(ad.pf.df)
+rm(gt.pf.df, gq.pf.df, dp.pf.df, ad.pf.df)
 
-# Convert ad table
+# Split ad table into two (ref,alt)
+ref.mx <- ad.mx
+alt.mx <- ad.mx
 
-```
+for (row in 1:nrow(ad.mx)){
+  for (col in 1:ncol(ad.mx)){
+    ref.alt <- strsplit(ad.mx[row,col],",")[[1]]
+    ref.mx[row,col] <- ref.alt[1]
+    alt.mx[row,col] <- ref.alt[2]
+  }
+}
 
-# estimate_num_of_genotypes_to_remove
+rm(row, col, ref.alt)
 
-```{r estimate_num_of_genotypes_to_remove}
+# Convert new tables to numeric
+ad.rownames <- rownames(ad.mx)
+ad.colnames <- colnames(ad.mx)
 
-# Genoptypes NA rate before genotypes filtering
-sum(is.na(gt.pf.msk.mx))/(dim(gt.pf.msk.mx)[1]*dim(gt.pf.msk.mx)[2]) # ~7%
+ref.mx <- matrix(as.numeric(ref.mx),nrow=nrow(ref.mx))
+rownames(ref.mx) <- ad.rownames
+colnames(ref.mx) <- ad.colnames
 
-# Types of genotypes to be excluded by masking
-sum(gq.pf.mx < 20, na.rm=TRUE)/(dim(gt.pf.mx)[1]*dim(gt.pf.mx)[2]) # ~5%
-sum(dp.pf.mx < 10, na.rm=TRUE)/(dim(dp.pf.mx)[1]*dim(dp.pf.mx)[2]) # ~7%
-#ad
+alt.mx <- matrix(as.numeric(alt.mx),nrow=nrow(alt.mx))
+rownames(alt.mx) <- ad.rownames
+colnames(alt.mx) <- ad.colnames
+
+rm(ad.rownames, ad.colnames)
+
+# Total num of NAs before genotype filtering
+sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2])
 
 ```
 
@@ -114,10 +153,12 @@ sum(dp.pf.mx < 10, na.rm=TRUE)/(dim(dp.pf.mx)[1]*dim(dp.pf.mx)[2]) # ~7%
 
 ```{r filter_by_gq}
 
-gt.pf.msk.mx <- gt.pf.mx
-NA -> gt.pf.msk.mx[ gq.pf.mx < 20 ]
-rm(gt.pf.mx, gq.pf.mx)
+# Apply filter
+NA -> gt.mx[ gq.mx < min.gq ]
+rm(gq.mx, min.gq)
 
+# Total num of NAs after filter
+sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2])
 
 ```
 
@@ -125,8 +166,12 @@ rm(gt.pf.mx, gq.pf.mx)
 
 ```{r filter_by_dp}
 
-NA -> gt.pf.msk.mx[ dp.pf.mx < 10 ]
-rm(dp.pf.mx)
+# Apply filter
+NA -> gt.mx[ dp.mx < min.dp ]
+rm(dp.mx, min.dp)
+
+# Total num of NAs after filter
+sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2])
 
 ```
 
@@ -134,16 +179,37 @@ rm(dp.pf.mx)
 
 ```{r filter_by_ad}
 
-# tba
+# For each genotype
+for (row in 1:nrow(gt.mx)){
+  for (col in 1:ncol(gt.mx)){
+    
+    # For not missed genotypes
+    if (!is.na(gt.mx[row,col])){
+  
+      # Calculate maf 
+      ref <- ref.mx[row,col]
+      alt <- alt.mx[row,col]
+      sum <- ref + alt
+      maf <- min(ref,alt)/sum
+      
+      # Remove homozigous genotypes with high maf
+      if(gt.mx[row,col]==0 | gt.mx[row,col]==2){
+        if(maf > hom.maf.max){ NA -> gt.mx[row,col] }
+      }
+      
+      # Remove heterozigous genotypes with low maf
+      if(gt.mx[row,col]==1){
+        if(maf < het.maf.min){ NA -> gt.mx[row,col] }
+      }
+      
+    }
+  }
+}
 
-```
+rm(row, col, ref, alt, sum, maf, het.maf.min, hom.maf.max)
 
-# NA_rate_after_filtering
-
-```{r NA_rate_after_filtering}
-
-dim(gt.pf.msk.mx)
-sum(is.na(gt.pf.msk.mx))/(dim(gt.pf.msk.mx)[1]*dim(gt.pf.msk.mx)[2]) # ~7%
+# Total num of NAs after filter
+sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2])
 
 ```
 
