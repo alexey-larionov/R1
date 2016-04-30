@@ -5,7 +5,7 @@ output: html_document
 ---
 
 started: Mar2016
-last updated: 26Apr2016
+last updated: 30Apr2016
 
 # start_section
 
@@ -24,7 +24,7 @@ library(knitr)
 #opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
 #setwd("/scratch/medgen/scripts/rscripts_05.16")
 
-#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
+opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
 #setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
 
 # Required libraries
@@ -130,6 +130,34 @@ ggplot(demographics.df[c(-59, -502,-503,-504,-505),], aes(rstime)) +
   ggtitle("demographics: rstime")
 
 # Exclude some samples with non-clean data
+
+```
+
+# split_ad_table
+
+```{r split_ad_table}
+
+ad.mx <- as.matrix(ad.df)
+
+ref.mx <- ad.mx
+alt.mx <- ad.mx
+
+for (row in 1:nrow(ad.mx)){
+  for (col in 1:ncol(ad.mx)){
+    ref.alt <- strsplit(ad.mx[row,col],",")[[1]]
+    ref.mx[row,col] <- ref.alt[1]
+    alt.mx[row,col] <- ref.alt[2]
+  }
+}
+
+rm(row, col, ref.alt)
+
+dim(ad.mx)
+dim(ref.mx)
+dim(alt.mx)
+ad.mx[1:5,1:5]
+ref.mx[1:5,1:5]
+alt.mx[1:5,1:5]
 
 ```
 
