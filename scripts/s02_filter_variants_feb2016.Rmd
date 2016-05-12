@@ -5,7 +5,7 @@ output: html_document
 ---
 
 started: Mar2016
-last updated: 30Apr2016
+last updated: 01May2016
 
 # start_section
 
@@ -21,11 +21,11 @@ graphics.off()
 # Set root working folder
 library(knitr)
 
-#opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
 #setwd("/scratch/medgen/scripts/rscripts_05.16")
 
-opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
-setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
+#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
+#setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
 
 ```
 
@@ -60,30 +60,31 @@ gq.df[1:5,1:3]
 dim(dp.df)
 dp.df[1:5,1:3]
 
-dim(ad.df)
-ad.df[1:5,1:3]
+dim(ad.mx)
+ad.mx[1:5,1:3]
 
-dim(ref.df)
-ref.df[1:5,1:3]
+dim(ref.mx)
+ref.mx[1:5,1:3]
 
-dim(alt.df)
-alt.df[1:5,1:3]
+dim(alt.mx)
+alt.mx[1:5,1:3]
 
 # Check consistence of rownames
 sum(rownames(gt.df) != rownames(vv.df), na.rm=TRUE)
 
 sum(rownames(gt.df) != rownames(gq.df), na.rm=TRUE)
 sum(rownames(gt.df) != rownames(dp.df), na.rm=TRUE)
-sum(rownames(gt.df) != rownames(ad.df), na.rm=TRUE)
-sum(rownames(gt.df) != rownames(ref.df), na.rm=TRUE)
-sum(rownames(gt.df) != rownames(alt.df), na.rm=TRUE)
+sum(rownames(gt.df) != rownames(ad.mx), na.rm=TRUE)
+sum(rownames(gt.df) != rownames(ref.mx), na.rm=TRUE)
+sum(rownames(gt.df) != rownames(alt.mx), na.rm=TRUE)
 
 # Check consistence of colnames
 sum(substr(colnames(gt.df),0,6) != substr(colnames(gq.df),0,6), na.rm=TRUE)
 sum(substr(colnames(gt.df),0,6) != substr(colnames(dp.df),0,6), na.rm=TRUE)
-sum(substr(colnames(gt.df),0,6) != substr(colnames(ad.df),0,6), na.rm=TRUE)
-sum(substr(colnames(gt.df),0,6) != substr(colnames(ref.df),0,6), na.rm=TRUE)
-sum(substr(colnames(gt.df),0,6) != substr(colnames(alt.df),0,6), na.rm=TRUE)
+sum(substr(colnames(gt.df),0,6) != substr(colnames(ad.mx),0,6), na.rm=TRUE)
+sum(substr(colnames(gt.df),0,6) != substr(colnames(ref.mx),0,6), na.rm=TRUE)
+sum(substr(colnames(gt.df),0,6) != substr(colnames(alt.mx),0,6), na.rm=TRUE)
+
 ```
 
 # filter_variants
@@ -112,19 +113,19 @@ dp.pf.df <- dp.df[vars.pf,]
 dim(dp.pf.df)
 rm(dp.df)
 
-ad.pf.df <- ad.df[vars.pf,]
-dim(ad.pf.df)
-rm(ad.df)
+ad.pf.mx <- ad.mx[vars.pf,]
+dim(ad.pf.mx)
+rm(ad.mx)
 
-ref.pf.df <- ref.df[vars.pf,]
-dim(ref.pf.df)
-rm(ref.df)
+ref.pf.mx <- ref.mx[vars.pf,]
+dim(ref.pf.mx)
+rm(ref.mx)
 
-alt.pf.df <- alt.df[vars.pf,]
-dim(alt.pf.df)
-rm(alt.df)
+alt.pf.mx <- alt.mx[vars.pf,]
+dim(alt.pf.mx)
+rm(alt.mx)
 
-rm(vars.pf)
+rm(vars.pf, ad.df, ad.pf.mx)
 
 # Genoptypes NA rate after variants filtering
 sum(is.na(gt.pf.df))/(dim(gt.pf.df)[1]*dim(gt.pf.df)[2]) # <1%

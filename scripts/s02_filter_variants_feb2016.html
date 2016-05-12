@@ -114,12 +114,12 @@ $(document).ready(function () {
 </div>
 
 
-<p>started: Mar2016 last updated: 29Mar2016</p>
+<p>started: Mar2016 last updated: 01May2016</p>
 <div id="start_section" class="section level1">
 <h1>start_section</h1>
 <pre class="r"><code># Time stamp
 Sys.time()</code></pre>
-<pre><code>## [1] &quot;2016-04-26 17:46:00 BST&quot;</code></pre>
+<pre><code>## [1] &quot;2016-05-01 15:46:31 BST&quot;</code></pre>
 <pre class="r"><code># Clean-up
 rm(list=ls())
 graphics.off()
@@ -137,8 +137,10 @@ opts_knit$set(root.dir = &quot;/scratch/medgen/scripts/rscripts_05.16&quot;)
 <h1>load_and_check_data</h1>
 <pre class="r"><code>load(file=&quot;data/s01_read_data_feb2016.RData&quot;)
 ls()</code></pre>
-<pre><code>## [1] &quot;ad.df&quot;           &quot;covar.df&quot;        &quot;demographics.df&quot; &quot;dp.df&quot;          
-## [5] &quot;gq.df&quot;           &quot;gt.df&quot;           &quot;samples.df&quot;      &quot;vv.df&quot;</code></pre>
+<pre><code>##  [1] &quot;ad.df&quot;           &quot;ad.mx&quot;           &quot;alt.mx&quot;         
+##  [4] &quot;covar.df&quot;        &quot;demographics.df&quot; &quot;dp.df&quot;          
+##  [7] &quot;gq.df&quot;           &quot;gt.df&quot;           &quot;ref.mx&quot;         
+## [10] &quot;samples.df&quot;      &quot;vv.df&quot;</code></pre>
 <pre class="r"><code>dim(covar.df)</code></pre>
 <pre><code>## [1] 498  34</code></pre>
 <pre class="r"><code>colnames(covar.df)</code></pre>
@@ -268,22 +270,22 @@ ls()</code></pre>
 ##  $ Consequence            : Factor w/ 95 levels &quot;3_prime_UTR_variant&quot;,..: 71 25 25 31 31 31 31 31 31 31 ...
 ##  $ IMPACT                 : Factor w/ 4 levels &quot;HIGH&quot;,&quot;LOW&quot;,&quot;MODERATE&quot;,..: 2 4 4 4 4 4 4 4 4 4 ...
 ##  $ CLIN_SIG               : Factor w/ 95 levels &quot;&quot;,&quot;association&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ SIFT                   : Factor w/ 205 levels &quot;&quot;,&quot;deleterious_low_confidence(0.01)&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ PolyPhen               : Factor w/ 1003 levels &quot;&quot;,&quot;benign(0.001)&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ SIFT                   : Factor w/ 205 levels &quot;&quot;,&quot;deleterious(0)&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ PolyPhen               : Factor w/ 1003 levels &quot;&quot;,&quot;benign(0)&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
 ##  $ Existing_variation     : Factor w/ 563471 levels &quot;&quot;,&quot;1KG_12_3747324&quot;,..: 1 419962 419963 1 1 355794 1 361614 161668 1 ...
 ##  $ GMAF                   : Factor w/ 16424 levels &quot;&quot;,&quot;-:0.0000&quot;,..: 1 1 1 1 1 6587 1 34 1 1 ...
-##  $ AFR_MAF                : Factor w/ 10312 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0.0008&quot;,..: 1 1 1 1 1 3737 1 2 1 1 ...
+##  $ AFR_MAF                : Factor w/ 10312 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0&amp;-:0&quot;,..: 1 1 1 1 1 3737 1 2 1 1 ...
 ##  $ ASN_MAF                : logi  NA NA NA NA NA NA ...
-##  $ EUR_MAF                : Factor w/ 8788 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0.001&quot;,..: 1 1 1 1 1 3369 1 2 1 1 ...
-##  $ EAS_MAF                : Factor w/ 8404 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0.001&quot;,..: 1 1 1 1 1 3121 1 2 1 1 ...
-##  $ SAS_MAF                : Factor w/ 8543 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0.001&quot;,..: 1 1 1 1 1 3252 1 34 1 1 ...
-##  $ AA_MAF                 : Factor w/ 32797 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0.0002&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ EA_MAF                 : Factor w/ 33625 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0.0001&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ cDNA_position          : Factor w/ 23204 levels &quot;&quot;,&quot;?-1&quot;,&quot;?-1002&quot;,..: 14761 1 1 15354 15820 15838 15978 16158 16391 17036 ...
-##  $ CDS_position           : Factor w/ 20550 levels &quot;&quot;,&quot;?-1&quot;,&quot;?-1006&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ EUR_MAF                : Factor w/ 8788 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0&amp;-:0&quot;,..: 1 1 1 1 1 3369 1 2 1 1 ...
+##  $ EAS_MAF                : Factor w/ 8404 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0&amp;-:0&quot;,..: 1 1 1 1 1 3121 1 2 1 1 ...
+##  $ SAS_MAF                : Factor w/ 8543 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0&amp;-:0&quot;,..: 1 1 1 1 1 3252 1 36 1 1 ...
+##  $ AA_MAF                 : Factor w/ 32797 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0&amp;-:0&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ EA_MAF                 : Factor w/ 33625 levels &quot;&quot;,&quot;-:0&quot;,&quot;-:0&amp;-:0&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ cDNA_position          : Factor w/ 23204 levels &quot;&quot;,&quot;0-1&quot;,&quot;1&quot;,&quot;?-1&quot;,..: 14685 1 1 15284 15755 15774 15918 16106 16329 16977 ...
+##  $ CDS_position           : Factor w/ 20550 levels &quot;&quot;,&quot;1&quot;,&quot;?-1&quot;,&quot;10&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
 ##  $ Codons                 : Factor w/ 6876 levels &quot;&quot;,&quot;-/A&quot;,&quot;-/AA&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ Protein_position       : Factor w/ 9321 levels &quot;&quot;,&quot;?-1&quot;,&quot;?-100&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ Amino_acids            : Factor w/ 4479 levels &quot;&quot;,&quot;-/*&quot;,&quot;-/*ASSQ&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Protein_position       : Factor w/ 9321 levels &quot;&quot;,&quot;1&quot;,&quot;?-1&quot;,&quot;10&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Amino_acids            : Factor w/ 4479 levels &quot;&quot;,&quot;-/*&quot;,&quot;*&quot;,&quot;A&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
 ##  $ DISTANCE               : int  NA NA NA NA NA NA NA NA NA NA ...
 ##  $ STRAND                 : int  1 1 1 1 1 1 1 1 1 1 ...
 ##  $ SYMBOL_SOURCE          : Factor w/ 7 levels &quot;&quot;,&quot;Clone_based_ensembl_gene&quot;,..: 4 4 4 4 4 4 4 4 4 4 ...</code></pre>
@@ -321,15 +323,33 @@ ls()</code></pre>
 ## var000000003         1         1         1
 ## var000000004        16        31        38
 ## var000000005        11        34        38</code></pre>
-<pre class="r"><code>dim(ad.df)</code></pre>
+<pre class="r"><code>dim(ad.mx)</code></pre>
 <pre><code>## [1] 757376    512</code></pre>
-<pre class="r"><code>ad.df[1:5,1:3]</code></pre>
+<pre class="r"><code>ad.mx[1:5,1:3]</code></pre>
 <pre><code>##              P1_A01.AD P1_A02.AD P1_A03.AD
-## var000000001       0,0       0,0       0,0
-## var000000002       1,0       0,0       0,0
-## var000000003       1,0       1,0       1,0
-## var000000004      16,0      31,0      38,0
-## var000000005      11,0      34,0      38,0</code></pre>
+## var000000001 &quot;0,0&quot;     &quot;0,0&quot;     &quot;0,0&quot;    
+## var000000002 &quot;1,0&quot;     &quot;0,0&quot;     &quot;0,0&quot;    
+## var000000003 &quot;1,0&quot;     &quot;1,0&quot;     &quot;1,0&quot;    
+## var000000004 &quot;16,0&quot;    &quot;31,0&quot;    &quot;38,0&quot;   
+## var000000005 &quot;11,0&quot;    &quot;34,0&quot;    &quot;38,0&quot;</code></pre>
+<pre class="r"><code>dim(ref.mx)</code></pre>
+<pre><code>## [1] 757376    512</code></pre>
+<pre class="r"><code>ref.mx[1:5,1:3]</code></pre>
+<pre><code>##              P1_A01.AD P1_A02.AD P1_A03.AD
+## var000000001 &quot;0&quot;       &quot;0&quot;       &quot;0&quot;      
+## var000000002 &quot;1&quot;       &quot;0&quot;       &quot;0&quot;      
+## var000000003 &quot;1&quot;       &quot;1&quot;       &quot;1&quot;      
+## var000000004 &quot;16&quot;      &quot;31&quot;      &quot;38&quot;     
+## var000000005 &quot;11&quot;      &quot;34&quot;      &quot;38&quot;</code></pre>
+<pre class="r"><code>dim(alt.mx)</code></pre>
+<pre><code>## [1] 757376    512</code></pre>
+<pre class="r"><code>alt.mx[1:5,1:3]</code></pre>
+<pre><code>##              P1_A01.AD P1_A02.AD P1_A03.AD
+## var000000001 &quot;0&quot;       &quot;0&quot;       &quot;0&quot;      
+## var000000002 &quot;0&quot;       &quot;0&quot;       &quot;0&quot;      
+## var000000003 &quot;0&quot;       &quot;0&quot;       &quot;0&quot;      
+## var000000004 &quot;0&quot;       &quot;0&quot;       &quot;0&quot;      
+## var000000005 &quot;0&quot;       &quot;0&quot;       &quot;0&quot;</code></pre>
 <pre class="r"><code># Check consistence of rownames
 sum(rownames(gt.df) != rownames(vv.df), na.rm=TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
@@ -337,14 +357,22 @@ sum(rownames(gt.df) != rownames(vv.df), na.rm=TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
 <pre class="r"><code>sum(rownames(gt.df) != rownames(dp.df), na.rm=TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
-<pre class="r"><code>sum(rownames(gt.df) != rownames(ad.df), na.rm=TRUE)</code></pre>
+<pre class="r"><code>sum(rownames(gt.df) != rownames(ad.mx), na.rm=TRUE)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>sum(rownames(gt.df) != rownames(ref.mx), na.rm=TRUE)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>sum(rownames(gt.df) != rownames(alt.mx), na.rm=TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
 <pre class="r"><code># Check consistence of colnames
 sum(substr(colnames(gt.df),0,6) != substr(colnames(gq.df),0,6), na.rm=TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
 <pre class="r"><code>sum(substr(colnames(gt.df),0,6) != substr(colnames(dp.df),0,6), na.rm=TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
-<pre class="r"><code>sum(substr(colnames(gt.df),0,6) != substr(colnames(ad.df),0,6), na.rm=TRUE)</code></pre>
+<pre class="r"><code>sum(substr(colnames(gt.df),0,6) != substr(colnames(ad.mx),0,6), na.rm=TRUE)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>sum(substr(colnames(gt.df),0,6) != substr(colnames(ref.mx),0,6), na.rm=TRUE)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>sum(substr(colnames(gt.df),0,6) != substr(colnames(alt.mx),0,6), na.rm=TRUE)</code></pre>
 <pre><code>## [1] 0</code></pre>
 </div>
 <div id="filter_variants" class="section level1">
@@ -375,12 +403,22 @@ dim(dp.pf.df)</code></pre>
 <pre><code>## [1] 280782    512</code></pre>
 <pre class="r"><code>rm(dp.df)
 
-ad.pf.df &lt;- ad.df[vars.pf,]
-dim(ad.pf.df)</code></pre>
+ad.pf.mx &lt;- ad.mx[vars.pf,]
+dim(ad.pf.mx)</code></pre>
 <pre><code>## [1] 280782    512</code></pre>
-<pre class="r"><code>rm(ad.df)
+<pre class="r"><code>rm(ad.mx)
 
-rm(vars.pf)
+ref.pf.mx &lt;- ref.mx[vars.pf,]
+dim(ref.pf.mx)</code></pre>
+<pre><code>## [1] 280782    512</code></pre>
+<pre class="r"><code>rm(ref.mx)
+
+alt.pf.mx &lt;- alt.mx[vars.pf,]
+dim(alt.pf.mx)</code></pre>
+<pre><code>## [1] 280782    512</code></pre>
+<pre class="r"><code>rm(alt.mx)
+
+rm(vars.pf, ad.df, ad.pf.mx)
 
 # Genoptypes NA rate after variants filtering
 sum(is.na(gt.pf.df))/(dim(gt.pf.df)[1]*dim(gt.pf.df)[2]) # &lt;1%</code></pre>
@@ -416,7 +454,7 @@ sum(is.na(gt.pf.df))/(dim(gt.pf.df)[1]*dim(gt.pf.df)[2]) # &lt;1%</code></pre>
 ##  [5] yaml_2.1.13     Rcpp_0.12.4     stringi_1.0-1   rmarkdown_0.9.5
 ##  [9] stringr_1.0.0   digest_0.6.9    evaluate_0.8.3</code></pre>
 <pre class="r"><code>Sys.time()</code></pre>
-<pre><code>## [1] &quot;2016-04-26 17:49:37 BST&quot;</code></pre>
+<pre><code>## [1] &quot;2016-05-01 15:58:53 BST&quot;</code></pre>
 </div>
 
 

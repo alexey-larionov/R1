@@ -21,10 +21,10 @@ graphics.off()
 # Set root working folder
 library(knitr)
 
-#opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
 #setwd("/scratch/medgen/scripts/rscripts_05.16")
 
-opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
+#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
 #setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
 
 # Required libraries
@@ -138,6 +138,7 @@ ggplot(demographics.df[c(-59, -502,-503,-504,-505),], aes(rstime)) +
 ```{r split_ad_table}
 
 ad.mx <- as.matrix(ad.df)
+rm(ad.df)
 
 ref.mx <- ad.mx
 alt.mx <- ad.mx
