@@ -10,7 +10,7 @@
 # ---------------------------------------- #
 
 #SBATCH -J run_rmd
-#SBATCH --time=05:00:00
+#SBATCH --time=12:00:00
 #SBATCH -A TISCHKOWITZ-SL2
 #SBATCH --nodes=1
 #SBATCH --exclusive

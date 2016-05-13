@@ -1,0 +1,55 @@
+---
+title: "Test apply for splitting AD"
+author: "AL"
+date: "May 12, 2016"
+output: html_document
+---
+
+# Test of 12May2016:
+# Exceeded memory limit (64GB) after~30 min of run
+
+```{r}
+
+# Time stamp
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Read data
+data.file <- "/scratch/medgen/scripts/rscripts_05.16/data/wecare_feb2016_std_filter_AD_biallelic.txt"
+x <- read.table(data.file, header=TRUE, row.names=1, sep="\t", quote="")
+
+# Split text fields by comma, place result into a vector
+y <- unlist(apply(x, 2, strsplit, split=","))
+
+# Reconstruct data into matrices
+a <- matrix(y[seq(1,length(y),2)], nrow=nrow(x))
+b <- matrix(y[seq(2,length(y),2)], nrow=nrow(x))
+
+# Set rownames and colnames
+rownames(a) <- rownames(x)
+rownames(b) <- rownames(x)
+colnames(a) <- colnames(x)
+colnames(b) <- colnames(x)
+
+# Explore result
+dim(x)
+dim(a)
+dim(b)
+
+x[1:25,1:15]
+a[1:25,1:15]
+b[1:25,1:15]
+
+# Save data
+save.image(file="/scratch/medgen/scripts/rscripts_05.16/data/test1.RData")
+
+# Info
+sessionInfo()
+
+# Time stamp
+Sys.time()
+
+```
