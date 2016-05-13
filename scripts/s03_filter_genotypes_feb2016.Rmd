@@ -18,6 +18,13 @@ it is possible to set thresholds by probability of the observed reads.
 This could be dome using pbinom(count of minor reads, sum of reads, 0.5). 
 The used proportion thresholds correspond to 1-5%, depending on total reads count. 
 
+Thresholds for min DP and GQ were set to 10 and 20 because they are commonly used 
+(e.g. see Carson BMC Bioinformatics 2014 15:125). 
+
+A small number of genotypes (~0.01%) was covered too high to be true (up to 1-2k coverage).
+These are obvious mistakes, and they have been removed too.  Arbitrary the threshold for
+max DP was set to 500 (appr. 10 fold of average coverage).
+
 # start_section
 
 ```{r start_section}
@@ -46,6 +53,7 @@ opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
 
 # Set thresholds for cumulative reads depth and genotype quality
 min.dp <- 10
+max.dp <- 500
 min.gq <- 20
 
 # Minimal call rate per variant
@@ -116,11 +124,10 @@ sum(substr(colnames(gt.pf.df),0,6) != substr(colnames(alt.pf.mx),0,6), na.rm=TRU
 
 ```
 
-# prepare_matrices
+# convert_data_frames_to_matrices
 
-```{r prepare_tables}
+```{r convert_data_frames_to_matrices}
 
-# Converet dataframes to matrices
 gt.mx <- as.matrix(gt.pf.df)
 gq.mx <- as.matrix(gq.pf.df)
 dp.mx <- as.matrix(dp.pf.df)
@@ -138,7 +145,12 @@ dim(dp.mx)
 class(dp.mx)
 dp.mx[1:5,1:5]
 
-# Convert ref/alt matrices to numeric
+```
+
+# convert_ref_alt_matrices_to_numeric
+
+```{r }
+
 ref.alt.rownames <- rownames(ref.pf.mx)
 ref.alt.colnames <- colnames(ref.pf.mx)
 
@@ -160,13 +172,34 @@ alt.mx[1:15,1:5]
 
 rm(ref.alt.rownames, ref.alt.colnames, ref.pf.mx, alt.pf.mx)
 
+```
+
+# histograms_before_filtering
+
+```{r histograms_before_filtering}
+
 # Total num of NAs before genotype filtering
 sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2]) # <1%
 
-# Callrates per variant before genotype filtering
+# Histograms of all gq and dp
+hist(gq.mx, breaks=50, main="Histograms of all gq", xlab=NULL)
+hist(gq.mx, breaks=250, xlim=c(80,100), main="Histograms of all gq (zoom to 80-100)", xlab=NULL)
+
+hist(dp.mx, breaks=50, main="Histograms of all dp", xlab=NULL)
+hist(dp.mx, breaks=500, xlim=c(0,150), main="Histograms of all dp (zoom to 0-150)", xlab=NULL)
+
+# Histograms of gq and dp in retained genotypes
+hist(gq.mx[!is.na(gt.mx)], breaks=50, main="Histograms of gq before filtering (gt is not NA)", xlab=NULL)
+hist(gq.mx[!is.na(gt.mx)], breaks=250, xlim=c(80,100), main="Histograms of gq before filtering (gt is not NA, zoom to 80-100)", xlab=NULL)
+
+hist(dp.mx[!is.na(gt.mx)], breaks=50, main="Histograms of dp before filtering (gt is not NA)", xlab=NULL)
+hist(dp.mx[!is.na(gt.mx)], breaks=500, xlim=c(0,150), main="Histograms of dp before filtering (gt is not NA, zoom to 0-150)", xlab=NULL)
+
+# Call rates per variant before genotype filtering
 x <- ncol(gt.mx)
 y <- apply(gt.mx,1,function(z){1-sum(is.na(z))/x})
-hist(y, xlab=NULL, main="Call rates per variant before genotypes filtering")
+hist(y, breaks=50, xlab=NULL, main="Call rates per variant before genotypes filtering")
+hist(y, breaks=500, xlim=c(0.9,1), xlab=NULL, main="Call rates per variant before genotypes filtering (zoom 0.9-1)")
 rm(x,y)
 
 ```
@@ -174,6 +207,9 @@ rm(x,y)
 # filter_by_gq
 
 ```{r filter_by_gq}
+
+sum(gq.mx < min.gq, na.rm=TRUE)
+sum(gq.mx < min.gq, na.rm=TRUE)/sum(!is.na(gq.mx))
 
 NA -> gt.mx[ gq.mx < min.gq ]
 rm(min.gq)
@@ -187,8 +223,16 @@ sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2]) # ~5%
 
 ```{r filter_by_dp}
 
+sum(dp.mx < min.dp, na.rm=TRUE)
+sum(dp.mx < min.dp, na.rm=TRUE)/sum(!is.na(gq.mx))
+
+sum(dp.mx > max.dp, na.rm=TRUE)
+sum(dp.mx > max.dp, na.rm=TRUE)/sum(!is.na(gq.mx))
+
 NA -> gt.mx[ dp.mx < min.dp ]
-rm(min.dp)
+NA -> gt.mx[ dp.mx > max.dp ]
+
+rm(min.dp, max.dp)
 
 # num of NAs after filter
 sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2]) # ~7%
@@ -290,10 +334,11 @@ sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2]) # ~8%
 # Call rates per variant before after genotypes filtering
 x <- ncol(gt.mx)
 y <- apply(gt.mx, 1, function(z){1-sum(is.na(z))/x})
-hist(y, ylab=NULL, main="Call rates per variant after genotypes filtering")
+hist(y, breaks=100, xlab=NULL, main="Call rates per variant after genotypes filtering")
 
 # Set filter and estimate the proportion of variants to remove
 var.retained <- y >= min.call.rate
+sum(var.retained)
 1-sum(var.retained)/nrow(gt.mx)
 rm(x,y,min.call.rate)
 
@@ -303,16 +348,30 @@ gq.mx <- gq.mx[ var.retained, ]
 dp.mx <- dp.mx[ var.retained, ]
 alt.mx <- alt.mx[ var.retained, ]
 ref.mx <- ref.mx[ var.retained, ]
-rm(var.retained)
+vv.df <- vv.pf.df[ var.retained, ]
+rm(var.retained, vv.pf.df)
 
 # Call rates per variant after filtering by call rate
 x <- ncol(gt.mx)
 y <- apply(gt.mx, 1, function(z){1-sum(is.na(z))/x})
-hist(y, xlab=NULL, xlim=c(0,1), main="Call rates per variant after filtering by call rate")
+hist(y, breaks=20, xlab=NULL, xlim=c(0,1), main="Call rates per variant after filtering by call rate")
 rm(x,y)
+
+```
+
+# histograms_after_filtering
+
+```{r histograms_after_filtering}
 
 # Total num of NAs after genotypes filtering and removal of variants with low call rate
 sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2]) # ~4%
+
+# Histograms of gq and dp after filtering
+hist(gq.mx[!is.na(gt.mx)], breaks=50, xlim=c(0,100), main="Histograms of gq after filtering", xlab=NULL)
+hist(gq.mx[!is.na(gt.mx)], breaks=200, xlim=c(80,100), main="Histograms of gq after filtering (zoom to 80-100)", xlab=NULL)
+
+hist(dp.mx[!is.na(gt.mx)], breaks=50, main="Histograms of dp after filtering", xlab=NULL)
+hist(dp.mx[!is.na(gt.mx)], breaks=150, xlim=c(0,150), main="Histograms of dp after filtering (gt is not NA, zoom to 0-150)", xlab=NULL)
 
 # Call rates per sample: based on variants retained after all filters
 x <- nrow(gt.mx)

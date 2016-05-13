@@ -10,14 +10,14 @@
 # ---------------------------------------- #
 
 #SBATCH -J run_rmd
-#SBATCH --time=12:00:00
+#SBATCH --time=01:00:00
 #SBATCH -A TISCHKOWITZ-SL2
 #SBATCH --nodes=1
 #SBATCH --exclusive
 #SBATCH --mail-type=ALL
 #SBATCH --no-requeue
 #SBATCH -p sandybridge
-##SBATCH --qos=INTR
+#SBATCH --qos=INTR
 
 # Modules section (required, do not remove)
 . /etc/profile.d/modules.sh

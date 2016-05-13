@@ -1,0 +1,411 @@
+---
+title: "Filter variants by predicted effect, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: Mar2016
+last updated: 25Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scripts/rscripts_05.16")
+
+#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
+#setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
+
+library(dplyr)
+
+```
+
+# filtering_settings
+
+```{r filtering_settings}
+
+# --- Selection criteria --- #
+
+use_priority_genes_list <- "no"
+
+# Loss of function: 
+# all (~5k)
+
+# Missense
+# strict: deleterious and probably_damaging with max scores (~2k)
+# medium: deleterious and probably_damaging with any scores (~14k)
+# all: ~90k
+
+# ClinSig
+# non-benign (~1k)
+
+# COSM in Existing_Variation
+# all (~28k)
+
+# --- All genes --- #
+#lof + medium missense + non-benign ClinSig
+
+# --- Priority genes --- #
+# Not yet used
+# lof + all missense + non-benign ClinSig + all somatic
+# Priority genes for relaxed criteria:
+# DNA repair, Estrogen-signalling etc
+# BRCA1, BRCA2, PALB2, ATM, CHK2, 
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s03_filter_genotypes_feb2016.RData")
+ls()
+
+dim(covar.df)
+str(covar.df)
+covar.df[1:5,1:5]
+
+dim(demographics.df)
+str(demographics.df)
+demographics.df[1:5,1:5]
+
+dim(samples.df)
+str(samples.df)
+samples.df[1:5,]
+
+dim(vv.df)
+str(vv.df)
+vv.df[1:5,1:5]
+
+dim(gt.mx)
+class(gt.mx)
+gt.mx[1:15,1:5]
+
+dim(gq.mx)
+class(gq.mx)
+gq.mx[1:15,1:5]
+
+dim(dp.mx)
+class(dp.mx)
+dp.mx[1:15,1:5]
+
+dim(ref.mx)
+class(ref.mx)
+ref.mx[1:15,1:5]
+
+dim(alt.mx)
+class(alt.mx)
+alt.mx[1:15,1:5]
+
+# Check consistence of rownames
+sum(rownames(gt.mx) != rownames(vv.df), na.rm=TRUE)
+
+sum(rownames(gt.mx) != rownames(gq.mx), na.rm=TRUE)
+sum(rownames(gt.mx) != rownames(dp.mx), na.rm=TRUE)
+sum(rownames(gt.mx) != rownames(ref.mx), na.rm=TRUE)
+sum(rownames(gt.mx) != rownames(alt.mx), na.rm=TRUE)
+
+# Check consistence of colnames (sub(".DP","") may be used instead)
+sum(substr(colnames(gt.mx),0,6) != substr(colnames(gq.mx),0,6), na.rm=TRUE)
+sum(substr(colnames(gt.mx),0,6) != substr(colnames(dp.mx),0,6), na.rm=TRUE)
+sum(substr(colnames(gt.mx),0,6) != substr(colnames(ref.mx),0,6), na.rm=TRUE)
+sum(substr(colnames(gt.mx),0,6) != substr(colnames(alt.mx),0,6), na.rm=TRUE)
+
+```
+
+# explore_annotations
+
+SIFT: tolerated, deleterious, tolerated_low_confidence, deleterious_low_confidence
+
+PolyPhen: benign, possibly_damaging, probably_damaging, unknown          
+
+CLIN_SIG: likely_benign, benign, risk_factor, not_provided, uncertain_significance, 
+pathogenic, likely_pathogenic, association, protective, other, drug_response,  confers_sensitivity
+
+Somatic: COSM in Existing_variation
+
+```{r explore_annotations}
+
+# SIFT
+unique(sub("\\(.*\\)","",as.vector(vv.df$SIFT)))
+
+# PolyPhen
+unique(sub("\\(.*\\)","",as.vector(vv.df$PolyPhen)))
+
+#CLIN_SIG
+unique(unlist(strsplit(as.vector(vv.df$CLIN_SIG), split="\\&")))
+
+```
+
+# split_calls_and_scores_in_SIFT
+
+SIFT: the higher score the less deleterious
+
+```{r split_calls_and_scores_in_SIFT}
+
+SIFT_Call <- 
+  vv.df$SIFT  %>% 
+  as.vector() %>% 
+  sub("\\(.*\\)","",.)
+
+NA -> SIFT_Call[SIFT_Call == ""]
+
+length(SIFT_Call)
+SIFT_Call[c(1:10,49)]
+
+SIFT_Score <- 
+  vv.df$SIFT %>% 
+  as.vector() %>% 
+  sub(".*\\(","",.)  %>% 
+  sub("\\)","",.)
+
+NA -> SIFT_Score[SIFT_Score == ""]
+SIFT_Score <- as.numeric(SIFT_Score)
+
+length(SIFT_Score)
+SIFT_Score[1:10]
+
+vv.df <- cbind(vv.df, SIFT_Call, SIFT_Score)
+rm (SIFT_Call, SIFT_Score)
+vv.df[c(1:10,180:190),c("SIFT", "SIFT_Call", "SIFT_Score")]
+
+```
+
+# split_calls_and_scores_in_PolyPhen
+
+PolyPhen: the higher score the more damaging
+
+```{r split_calls_and_scores_in_PolyPhen}
+
+PolyPhen_Call <- 
+  vv.df$PolyPhen  %>% 
+  as.vector() %>% 
+  sub("\\(.*\\)","",.)
+
+NA -> PolyPhen_Call[PolyPhen_Call == ""]
+
+length(PolyPhen_Call)
+PolyPhen_Call[1:10]
+
+PolyPhen_Score <- 
+  vv.df$PolyPhen %>% 
+  as.vector() %>% 
+  sub(".*\\(","",.)  %>% 
+  sub("\\)","",.)
+
+NA -> PolyPhen_Score[PolyPhen_Score == ""]
+PolyPhen_Score <- as.numeric(PolyPhen_Score)
+
+length(PolyPhen_Score)
+PolyPhen_Score[1:10]
+
+vv.df <- cbind(vv.df, PolyPhen_Call, PolyPhen_Score)
+rm (PolyPhen_Call, PolyPhen_Score)
+vv.df[c(1:10,49),c("PolyPhen", "PolyPhen_Call", "PolyPhen_Score")]
+
+```
+
+# make_lof_index
+
+```{r make_lof_index}
+
+splice_acceptor_variant <- grepl( "splice_acceptor_variant", vv.df$Consequence)
+sum(splice_acceptor_variant)
+
+splice_donor_variant <- grepl( "splice_donor_variant", vv.df$Consequence)
+sum(splice_donor_variant)
+
+stop_gain <- grepl( "stop_gain", vv.df$Consequence)
+sum(stop_gain)
+
+frameshift_variant <- grepl( "frameshift_variant", vv.df$Consequence)
+sum(frameshift_variant)
+
+stop_lost <- grepl( "stop_lost", vv.df$Consequence)
+sum(stop_lost)
+
+start_lost <- grepl( "start_lost", vv.df$Consequence)
+sum(start_lost)
+
+lof_all <- splice_acceptor_variant | splice_donor_variant | stop_gain | frameshift_variant | stop_lost | start_lost
+
+sum(lof_all)
+
+rm(splice_acceptor_variant, splice_donor_variant, stop_gain, frameshift_variant, stop_lost, start_lost)
+
+```
+
+# make_missense_indices
+
+```{r make_missense_indices}
+
+missense_all <- grepl( "missense_variant", vv.df$Consequence)
+sum(missense_all)
+
+deleterious <- vv.df$SIFT_Call == "deleterious"
+FALSE -> deleterious[is.na(deleterious)]
+sum(deleterious)
+
+probably_damaging <- vv.df$PolyPhen_Call == "probably_damaging"
+FALSE -> probably_damaging[is.na(probably_damaging)]
+sum(probably_damaging)
+
+missense_medium <- deleterious & probably_damaging
+sum(missense_medium)
+rm(deleterious, probably_damaging)
+
+deleterious_strict <- vv.df$SIFT_Call == "deleterious" & vv.df$SIFT_Score == 0
+FALSE -> deleterious_strict[is.na(deleterious_strict)]
+sum(deleterious_strict)
+
+damaging_strict <- vv.df$PolyPhen_Call == "probably_damaging" & vv.df$PolyPhen_Score == 1
+FALSE -> damaging_strict[is.na(damaging_strict)]
+sum(damaging_strict)
+
+missense_strict <- deleterious_strict & damaging_strict
+sum(missense_strict)
+rm(deleterious_strict, damaging_strict)
+
+```
+
+# make_clinsig_index
+
+Note sums w/o na.rm=TRUE
+
+```{r make_clinsig_index}
+
+benign <- grepl( "benign", vv.df$CLIN_SIG) # includes "likely_benign"
+sum(benign)
+
+risk_factor <- grepl( "risk_factor", vv.df$CLIN_SIG)
+sum(risk_factor)
+
+pathogenic <- grepl( "pathogenic", vv.df$CLIN_SIG) # includes "likely_pathogenic"
+sum(pathogenic)
+
+association <- grepl( "association", vv.df$CLIN_SIG)
+sum(association)
+
+protective <- grepl( "protective", vv.df$CLIN_SIG)
+sum(protective)
+
+drug_response <- grepl( "drug_response", vv.df$CLIN_SIG)
+sum(drug_response)
+
+confers_sensitivity <- grepl( "confers_sensitivity", vv.df$CLIN_SIG)
+sum(confers_sensitivity)
+
+other <- grepl( "other", vv.df$CLIN_SIG)
+sum(other)
+
+clinsig_non_benign <- risk_factor | pathogenic | association | protective | drug_response | confers_sensitivity | other
+
+sum(clinsig_non_benign)
+
+rm(benign, risk_factor, pathogenic, association, protective, drug_response, confers_sensitivity, other)
+
+```
+
+# make_somatic_index
+
+```{r make_somatic_index}
+
+somatic <- grepl("COSM", vv.df$Existing_variation)
+sum(somatic)
+
+```
+
+# make_cumulative_indices
+
+```{r make_cumulative_indices}
+
+strict_set <- lof_all | missense_strict | clinsig_non_benign
+sum(strict_set) # ~8k
+
+standard_set <- lof_all | missense_medium | clinsig_non_benign
+sum(standard_set) # ~20k
+
+relaxed_set <- lof_all | missense_all | clinsig_non_benign | somatic
+sum(relaxed_set) # ~100k, should only be used in selected genes
+
+rm(lof_all, missense_strict, missense_medium, missense_all, clinsig_non_benign, somatic)
+
+```
+
+# filter_variants
+
+```{r filter_variants}
+
+vv.str <- vv.df[strict_set,]
+gt.str <- gt.mx[strict_set,]
+gq.str <- gq.mx[strict_set,]
+dp.str <- dp.mx[strict_set,]
+alt.str <- alt.mx[strict_set,]
+ref.str <- ref.mx[strict_set,]
+
+dim(gt.str)
+dim(vv.str)
+
+vv.std <- vv.df[standard_set,]
+gt.std <- gt.mx[standard_set,]
+gq.std <- gq.mx[standard_set,]
+dp.std <- dp.mx[standard_set,]
+alt.std <- alt.mx[standard_set,]
+ref.std <- ref.mx[standard_set,]
+
+dim(gt.std)
+dim(vv.std)
+
+vv.rel <- vv.df[relaxed_set,]
+gt.rel <- gt.mx[relaxed_set,]
+gq.rel <- gq.mx[relaxed_set,]
+dp.rel <- dp.mx[relaxed_set,]
+alt.rel <- alt.mx[relaxed_set,]
+ref.rel <- ref.mx[relaxed_set,]
+
+dim(gt.rel)
+dim(vv.rel)
+
+rm(vv.df, gt.mx, gq.mx, dp.mx, alt.mx, ref.mx, strict_set, standard_set, relaxed_set)
+
+```
+
+# explore_result
+
+```{r explore_result}
+
+# Explore selected genes 
+# Note that sum of AFs per gene may exceed 1
+
+vv.std[vv.std$SYMBOL=="NPHP4",c("SYMBOL","AF","AC","AN")]
+vv.std[vv.std$SYMBOL=="OR4C5",c("SYMBOL","AF","AC","AN")]
+vv.std[vv.std$SYMBOL=="SARM1",c("SYMBOL","AF","AC","AN")]
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s04_filter_by_effect_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+
+```
