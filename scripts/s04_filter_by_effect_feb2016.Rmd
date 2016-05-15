@@ -4,8 +4,8 @@ author: "Alexey Larionov"
 output: html_document
 ---
 
-started: Mar2016
-last updated: 25Mar2016
+started: 01Mar2016
+last updated: 14May2016
 
 # start_section
 
@@ -36,7 +36,7 @@ library(dplyr)
 
 # --- Selection criteria --- #
 
-use_priority_genes_list <- "no"
+# use_priority_genes_list <- "no"
 
 # Loss of function: 
 # all (~5k)

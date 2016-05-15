@@ -114,12 +114,12 @@ $(document).ready(function () {
 </div>
 
 
-<p>started: Mar2016 last updated: 25Mar2016</p>
+<p>started: 01Mar2016 last updated: 14May2016</p>
 <div id="start_section" class="section level1">
 <h1>start_section</h1>
 <pre class="r"><code># Start time
 Sys.time()</code></pre>
-<pre><code>## [1] &quot;2016-05-13 21:09:17 BST&quot;</code></pre>
+<pre><code>## [1] &quot;2016-05-14 16:06:17 BST&quot;</code></pre>
 <pre class="r"><code># Clean-up
 rm(list=ls())
 graphics.off()
@@ -146,7 +146,7 @@ library(dplyr)</code></pre>
 <h1>filtering_settings</h1>
 <pre class="r"><code># --- Selection criteria --- #
 
-use_priority_genes_list &lt;- &quot;no&quot;
+# use_priority_genes_list &lt;- &quot;no&quot;
 
 # Loss of function: 
 # all (~5k)
@@ -176,11 +176,9 @@ use_priority_genes_list &lt;- &quot;no&quot;
 <h1>load_and_check_data</h1>
 <pre class="r"><code>load(file=&quot;data/s03_filter_genotypes_feb2016.RData&quot;)
 ls()</code></pre>
-<pre><code>##  [1] &quot;alt.mx&quot;                  &quot;covar.df&quot;               
-##  [3] &quot;demographics.df&quot;         &quot;dp.mx&quot;                  
-##  [5] &quot;gq.mx&quot;                   &quot;gt.mx&quot;                  
-##  [7] &quot;ref.mx&quot;                  &quot;samples.df&quot;             
-##  [9] &quot;use_priority_genes_list&quot; &quot;vv.df&quot;</code></pre>
+<pre><code>## [1] &quot;alt.mx&quot;          &quot;covar.df&quot;        &quot;demographics.df&quot; &quot;dp.mx&quot;          
+## [5] &quot;gq.mx&quot;           &quot;gt.mx&quot;           &quot;ref.mx&quot;          &quot;samples.df&quot;     
+## [9] &quot;vv.df&quot;</code></pre>
 <pre class="r"><code>dim(covar.df)</code></pre>
 <pre><code>## [1] 498  34</code></pre>
 <pre class="r"><code>str(covar.df)</code></pre>
@@ -870,7 +868,7 @@ vv.std[vv.std$SYMBOL==&quot;NPHP4&quot;,c(&quot;SYMBOL&quot;,&quot;AF&quot;,&quo
 ##  [9] yaml_2.1.13     Rcpp_0.12.4     stringi_1.0-1   rmarkdown_0.9.5
 ## [13] stringr_1.0.0   digest_0.6.9    evaluate_0.8.3</code></pre>
 <pre class="r"><code>Sys.time()</code></pre>
-<pre><code>## [1] &quot;2016-05-13 21:11:10 BST&quot;</code></pre>
+<pre><code>## [1] &quot;2016-05-14 16:08:11 BST&quot;</code></pre>
 </div>
 
 

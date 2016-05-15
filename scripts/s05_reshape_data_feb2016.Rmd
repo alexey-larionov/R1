@@ -4,8 +4,8 @@ author: "Alexey Larionov"
 output: html_document
 ---
 
-started: Mar2016
-last updated: 05Apr2016
+started: 01Mar2016
+last updated: 15May2016
 
 # start_section
 
@@ -20,53 +20,237 @@ graphics.off()
 
 # Set root working folder
 library(knitr)
-opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
-#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scripts/rscripts_05.16")
+
+#opts_knit$set(root.dir = "C:\\Users\\larion01\\Documents\\GitHub\\R1")
+#setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
 
 # Required libraries
+library(tidyr)
 library(dplyr)
+library(stringr)
 
 ```
 
-# load_and_check_data
+# load_data
 
-```{r load_and_check_data}
+```{r load_data}
 
-load(file="data/s03_select_lof_feb2016.RData")
+load(file="data/s04_filter_by_effect_feb2016.RData")
 ls()
+
+vv.df <- vv.std
+gt.mx <- gt.std
+
+rm(vv.std, gt.std, gq.std, dp.std, ref.std, alt.std)
+rm(vv.str, gt.str, gq.str, dp.str, ref.str, alt.str)
+rm(vv.rel, gt.rel, gq.rel, dp.rel, ref.rel, alt.rel)
+
+ls()
+
+```
+
+# convert_dfs_to_tables - do it later or not do at all: messes with row manes!!
+
+```{r convert_dfs_to_tables}
+
+covar.tb <- tbl_df(covar.df)
+rownames(covar.tb) <- rownames(covar.df)
+rm(covar.df)
+
+demographics.tb <- tbl_df(demographics.df)
+rownames(demographics.tb) <- rownames(demographics.df)
+rm(demographics.df)
+
+samples.tb <- tbl_df(samples.df)
+rownames(samples.tb) <- rownames(samples.df)
+rm(samples.df)
+
+vv.tb <- tbl_df(vv.df)
+rownames(vv.tb) <- rownames(vv.df)
+rm(vv.df)
+
+```
+
+# check_data
+
+```{r check_data}
+
+dim(covar.tb)
+class(covar.tb)
+str(covar.tb)
+covar.tb[1:5,1:5]
+rownames(covar.tb)[1:5]
+
+dim(demographics.tb)
+class(demographics.tb)
+str(demographics.tb)
+demographics.tb[1:5,1:5]
+rownames(demographics.tb)[1:5]
+
+dim(samples.tb)
+class(samples.tb)
+str(samples.tb)
+samples.tb[1:5,]
+rownames(samples.tb)[1:5]
+
+dim(vv.tb)
+class(vv.tb)
+str(vv.tb)
+vv.tb[1:5,1:5]
+rownames(vv.tb)[1:5]
+
+dim(gt.mx)
+class(gt.mx)
+gt.mx[1:25,1:5]
+
+# Check consistence of rownames
+sum(rownames(gt.mx) != rownames(vv.tb), na.rm=TRUE)
+
+```
+
+# reshape_variants_annotations
+
+```{r reshape_variants_annotations}
+
+# select relevant variants annotations
+variants.tb <- 
+  vv.tb %>% 
+  select(SYMBOL, TYPE, CHROM, POS, REF, ALT, AC, AF, AN, 
+         Consequence, SIFT, PolyPhen, CLIN_SIG, 
+         GMAF, EUR_MAF, ALT_frequency_in_1k_95)
+
+class(variants.tb)
+rownames(variants.tb)[1:5]
+
+rm(vv.tb)
+
+# Explore cases with confusing GMAF/EUR_MAF containing & symbol
+nrow(variants.tb %>% filter(grepl("&",GMAF)))
+nrow(variants.tb %>% filter(grepl("&",EUR_MAF)))
+variants.tb %>% 
+  filter(grepl("&",EUR_MAF)) %>% 
+  select(c(1:6), GMAF, EUR_MAF)
+
+# There are 3 variants with triplicated values separated by &
+variants.tb[c(1235, 11405, 15894),c("GMAF", "EUR_MAF")]
+
+# Split cases with confusing EUR_MAF containing & symbol
+variants.tb <- 
+  variants.tb %>% 
+  separate(EUR_MAF, c("EUR_MAF1", "EUR_MAF2"), "&") 
+
+- Lost row names !
+
+# All duplicated values are the same
+sum(variants.tb$EUR_MAF1 != variants.tb$EUR_MAF2, na.rm=TRUE)
+
+# Remove one of the duplicates
+variants.tb <- 
+  variants.tb %>% 
+  select(-EUR_MAF2)
+
+# split GMAF and EUR_MAF1
+variants.tb <- 
+  variants.tb %>% 
+  separate(GMAF, c("GMAF_Allele", "GMAF_Fraction"), ":") %>% 
+  separate(EUR_MAF1, c("EUR_MAF_Allele", "EUR_MAF_Fraction"), ":") 
+
+# Convert columns to numeric etc
+as.numeric(variants.tb$GMAF_Fraction) -> variants.tb$GMAF_Fraction
+as.numeric(variants.tb$EUR_MAF_Fraction) -> variants.tb$EUR_MAF_Fraction
+NA -> variants.tb$GMAF_Allele[variants.tb$GMAF_Allele == ""]
+NA -> variants.tb$EUR_MAF_Allele[variants.tb$EUR_MAF_Allele == ""]
+as.factor(variants.tb$GMAF_Allele) -> variants.tb$GMAF_Allele
+as.factor(variants.tb$EUR_MAF_Allele) -> variants.tb$EUR_MAF_Allele
+
+# Check variants table
+dim(variants.tb)
+class(variants.tb)
+str(variants.tb)
+variants.tb[1:5,1:5]
+rownames(variants.tb)[1:5]
+
+```
+
+# explore_covar
+
+```{r explore_covar}
 
 dim(covar.df)
 colnames(covar.df)
-str(covar.df)
-covar.df[1:5,1:5]
 
-dim(samples.df)
-colnames(samples.df)
-str(samples.df)
-samples.df$wes_id
-samples.df[1:5,]
+attach(covar.df)
 
-dim(vv.pf.lof.df)
-colnames(vv.pf.lof.df)
-str(vv.pf.lof.df)
-vv.pf.lof.df[1:5,1:3]
+sum(chemo != chemo_self_mra)
+sum(hormone != hormone_self_mra, na.rm=TRUE)
+sum(status2 != status2)
+sum(race)
+sum(dsmiss)
+sum(good_location)
+sum(Deleterious)
+sum(family_history)
+sum(XRTBrCHAR != XRTBreast)
+sum(sub_dx_age_cat)
 
-dim(gt.pf.msk.lof.mx)
-colnames(gt.pf.msk.lof.mx)
-gt.pf.msk.lof.mx[1:5,1:5]
-
-# Check consistence of rownames
-sum(rownames(gt.pf.msk.lof.mx) != rownames(vv.pf.lof.df), na.rm=TRUE)
+detach(covar.df)
 
 ```
 
-# select_relevant_variants_annotations
+# explore_demographics
 
-```{r select_relevant_variants_annotations}
+```{r explore_demographics}
 
-variants.df <- vv.pf.lof.df %>% select(SYMBOL, TYPE, CHROM, POS, REF, ALT, AC, AF, AN, Consequence, SIFT, PolyPhen, CLIN_SIG, GMAF, EUR_MAF, ALT_frequency_in_1k_95)
+dim(demographics.df)
+colnames(demographics.df)
 
-rm(vv.pf.lof.df)
+demographics.tb <- tbl_df(demographics.df)
+class(demographics.df)
+class(demographics.tb)
+
+samples.df %>% 
+  filter(grepl("not_annotated", filter)) %>% 
+  arrange(filter)
+
+not_annotated <-
+  samples.df %>% 
+  filter(grepl("not_annotated", filter)) %>% 
+  select(gwas_id)
+
+not_annotated <- as.vector(not_annotated$gwas_id)
+
+samples.df %>% 
+  filter(gwas_id %in% not_annotated)
+
+demographics.df %>% 
+  select(labid.x,labid.y) %>% 
+  filter(labid.x %in% not_annotated | labid.y %in% not_annotated)
+
+attach(demographics.df)
+
+demographics.df %>% 
+  select(starts_with("labid")) %>% 
+  filter(is.na(labid.x) | is.na(labid.y))
+
+demographics.df %>% 
+  select(starts_with("labid")) %>% 
+  filter(labid.x %in% wes.done.not.annotated | labid.y %in% wes.done.not.annotated)
+
+
+
+sum(chemo != chemo_self_mra)
+sum(hormone != hormone_self_mra, na.rm=TRUE)
+sum(status2 != status2)
+sum(race)
+sum(dsmiss)
+sum(good_location)
+sum(Deleterious)
+sum(family_history)
+sum(XRTBrCHAR != XRTBreast)
+sum(sub_dx_age_cat)
+
+detach(demographics.df)
 
 ```
 
@@ -74,7 +258,13 @@ rm(vv.pf.lof.df)
 
 ```{r select_relevant_phenotype_annotations}
 
-phenotypes.df <- covar.df %>% select(labid, cc, offset, family_history, sub_dx_age, chemo, hormone, XRTBreast, Eigen_1, Eigen_2, Eigen_3, Eigen_4, Eigen_5)
+phenotypes.df <- 
+  covar.df %>% 
+  select(labid, cc, 
+         sub_dx_age, offset, family_history, 
+         chemo, hormone, XRTBreast, dose, 
+         Eigen_1, Eigen_2, Eigen_3, Eigen_4, Eigen_5)
+
 colnames(phenotypes.df)[1] <- "gwas_id" # for merging with samples.df
 
 rm(covar.df)

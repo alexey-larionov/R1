@@ -1,0 +1,174 @@
+---
+title: "Aggregate lof variants, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: Mar2016
+last_updated:26Mar2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+#setwd("/scratch/medgen/users/alexey/wecare_feb2016/wecare_feb2016_r")
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s05_add_subgroups_afs_feb2016.RData")
+ls()
+
+dim(genotypes.mx)
+genotypes.mx[1:5,1:5]
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+dim(variants.df)
+colnames(variants.df)
+str(variants.df)
+variants.df[1:5,1:5]
+
+# Check consistence of tables
+sum(rownames(genotypes.mx) != rownames(variants.df))
+sum(colnames(genotypes.mx) != rownames(phenotypes.df))
+
+```
+
+# explore_nums_of_lof_variants_per_gene
+
+```{r explore_nums_of_lof_variants_per_gene}
+
+# Get list of genes
+genes <- as.vector(variants.df[ ,"SYMBOL"] )
+length(genes)
+
+x <- sort(table(genes), decreasing = TRUE)
+x[1:86] # >3 types of lof events per gene (~2% genes with lof events)
+x[87:254] # 3 types of lof events per gene (168 genes, ~4% genes with lof events)
+x[255:927] # 2 types of lof events per gene (673 genes, ~17% genes with lof events)
+
+hist(x, breaks=c(-0.5:14.5), xlim=c(0,14), ylim=c(0,3500), 
+     labels = TRUE, main="HI-LOF variants per gene", 
+     xlab="Num of HI-LOF variants", ylab="Genes count", 
+     xaxp=c(0,14,14))
+
+rm(x, genes)
+
+```
+
+# Visual inspection of the genes with multiple types of lof events
+
+It is immediately noticeable that ATM is at the very top of the list: 8 different lof events in wecare. 
+
+The genes with multiple types of lof events also included: BRCA1 (5 types of events), BRCA2 (4 types of lof events), PALB2 (3 types of lof events) and RAD52 (2 types of lof events), 
+
+This suggests that diversity of lof events per gene (= number of diferent lof events per gene) may be a meaningful feature, along with the total events burden, of cource.  
+
+Interestingly, CYP2D6 had 4 types of lof events and MKI67 had 2 types of lof events.  
+
+Also it could be noted that a number of collagens and MMPs showed multiple (2-3) types of lof events.  
+
+This could be mechanistically linked to extracellular matrix in tumours or normal breast.  
+
+# aggregate_genotypes_table
+
+```{r aggregate_genotypes_table}
+
+# Add gene names to genotypes
+genotypes.df <- cbind(variants.df$SYMBOL, as.data.frame(genotypes.mx))
+colnames(genotypes.df)[1] <- "gene"
+str(genotypes.df[,1:5])
+
+# Aggregate
+events.per.gene.wecare.df <- aggregate(genotypes.df[,-1], list(gene=genotypes.df$gene), sum, na.rm=TRUE)
+dim(events.per.gene.wecare.df)
+str(events.per.gene.wecare.df[,1:5])
+
+# Check the summation
+sum(genotypes.mx, na.rm = TRUE)
+sum(events.per.gene.wecare.df[,-1], na.rm=TRUE)
+
+# Update rownames
+rownames(events.per.gene.wecare.df) <- events.per.gene.wecare.df[,"gene"]
+
+# Clean-up
+rm(genotypes.mx, genotypes.df)
+
+```
+
+# aggregate_variants_table
+
+```{r aggregate_variants_table}
+
+# Check that the required columns are numeric
+required.columns <- c("AF", "AF.gt", "AF.cbc", "AF.ubc", "AF.cfbc", "AF.usbc")
+str(variants.df[, required.columns])
+
+# Aggregate
+burden.per.gene.wecare.df <- aggregate(variants.df[,required.columns], list(gene=variants.df$SYMBOL), sum, na.rm=TRUE)
+dim(burden.per.gene.wecare.df)
+colnames(burden.per.gene.wecare.df) <- c("gene","BD", "BD.gt", "BD.cbc", "BD.ubc", "BD.cfbc", "BD.usbc")
+str(burden.per.gene.wecare.df)
+
+# Check the summation
+sum(burden.per.gene.wecare.df[,-1], na.rm = TRUE)
+sum(variants.df[,required.columns], na.rm=TRUE)
+
+# Update rownames
+rownames(burden.per.gene.wecare.df) <- burden.per.gene.wecare.df[,"gene"]
+
+# Clean-up
+rm(required.columns)
+
+```
+
+# explore_results
+
+```{r explore_results}
+
+# Make sure the gene lists are the same in events and burdens
+sum(rownames(burden.per.gene.wecare.df) != rownames(events.per.gene.wecare.df))
+
+# Explore selected genes 
+# Note that EFs per gene may exceed 1.
+# This means that there could be several events per one subject
+# i.e. two or three LOF variants in the same sample. 
+genes.list <- c("NPHP4","OR4C5","SARM1","ATM","PALB2", "MKI67")
+burden.per.gene.wecare.df[genes.list,]
+rm(genes.list)
+
+```
+
+# save_data
+
+```{r save_data}
+
+save.image(file="data/s06_aggregate_lof_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```
