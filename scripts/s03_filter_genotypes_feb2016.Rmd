@@ -5,9 +5,12 @@ output: html_document
 ---
 
 started: 01Mar2016
-last updated: 12May2016
+last updated: 17May2016
 
 # Notes 
+
+# Move Call Rate filtering to separate script
+# Change filtering options to (i) binomial in het and (ii) min. support for hom
 
 It was discussed with DC whether to filter cases by call rate per case. 
 There was ~3 cases with low coverage (<20) and low call rates (<50%). 
@@ -56,12 +59,15 @@ min.dp <- 10
 max.dp <- 500
 min.gq <- 20
 
+# Set theresholds for fraction of reads with minor allele (frma)
+# minimal support for homozigous: 95%
+max.frma.hom <- 0.05 # Max frma for homozigous calls
+
+# Minimal binomial probability for heterozigous: 5%
+min.frma.het <- 0.35 # Min frma for heterozigous calls
+
 # Minimal call rate per variant
 min.call.rate <- 0.8
-
-# Set theresholds for fraction of reads with minor allele (frma)
-max.frma.hom <- 0.05 # Max frma for homozigous calls
-min.frma.het <- 0.35 # Min frma for heterozigous calls
 
 ```
 
@@ -239,12 +245,15 @@ sum(is.na(gt.mx))/(dim(gt.mx)[1]*dim(gt.mx)[2]) # ~7%
 
 ```
 
-# calculate_fractions_of_reads_with_minor_allele
+# filter_heterozigous_calls
 
 ```{r calculate_fractions_of_reads_with_minor_allele}
 
+
 # Sum of ref and alt
 sum.mx <- ref.mx + alt.mx
+
+# Set non-hets to NAs ? 
 
 dim(sum.mx)
 sum.mx[1:15,1:5]
@@ -269,11 +278,22 @@ alt.mx[1:15,1:5]
 
 rm(ref.sub.alt)
 
+
+
 # Calculate fractions of reads with minor allele (frma)
-frma.mx <- crma.mx/sum.mx
+frma.mx <- crma.mx/sum.mx # not used
+
+# Calculate probabilities of observed read splits under heterozigous call
+prma.mx <- pbinom(crma.mx,sum.mx,0.5)
 
 dim(frma.mx)
 frma.mx[1:15,1:5]
+
+dim(prma.mx)
+prma.mx[1:15,1:5]
+
+crma.mx[1:15,1:5]
+sum.mx[1:15,1:5]
 
 crma.mx[1:15,1:5]
 sum.mx[1:15,1:5]
@@ -285,9 +305,20 @@ sum(is.na(frma.mx))
 sum(is.nan(frma.mx)) 
 sum(!is.finite(frma.mx)) 
 
+
+
 rm(crma.mx, sum.mx)
 
+
+# Do actual filtering ...
+# Use two- or one-tailed cut-offs?
+
+
 ```
+
+# Filter homozigous refs
+
+# Filter homozigous alts
 
 # filter_by_fraction_of_reads_with_minor_allele
 

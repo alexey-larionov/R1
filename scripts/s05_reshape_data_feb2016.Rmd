@@ -27,9 +27,9 @@ opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
 #setwd("C:\\Users\\larion01\\Documents\\GitHub\\R1")
 
 # Required libraries
-library(tidyr)
-library(dplyr)
-library(stringr)
+library(tidyr) # for separate
+library(dplyr) # for piping, filter, select etc
+library(stringr) # for str_replace_all
 
 ```
 
@@ -49,27 +49,9 @@ rm(vv.rel, gt.rel, gq.rel, dp.rel, ref.rel, alt.rel)
 
 ls()
 
-```
-
-# convert_dfs_to_tables - do it later or not do at all: messes with row manes!!
-
-```{r convert_dfs_to_tables}
-
-covar.tb <- tbl_df(covar.df)
-rownames(covar.tb) <- rownames(covar.df)
-rm(covar.df)
-
-demographics.tb <- tbl_df(demographics.df)
-rownames(demographics.tb) <- rownames(demographics.df)
-rm(demographics.df)
-
-samples.tb <- tbl_df(samples.df)
-rownames(samples.tb) <- rownames(samples.df)
-rm(samples.df)
-
-vv.tb <- tbl_df(vv.df)
-rownames(vv.tb) <- rownames(vv.df)
-rm(vv.df)
+# I do NOT convert_dfs_to_tables because it loses row manes. 
+# However, it could be considered later, 
+# when row names handling in tables is fixed. 
 
 ```
 
@@ -77,36 +59,28 @@ rm(vv.df)
 
 ```{r check_data}
 
-dim(covar.tb)
-class(covar.tb)
-str(covar.tb)
-covar.tb[1:5,1:5]
-rownames(covar.tb)[1:5]
+dim(covar.df)
+str(covar.df)
+covar.df[1:5,1:5]
 
-dim(demographics.tb)
-class(demographics.tb)
-str(demographics.tb)
-demographics.tb[1:5,1:5]
-rownames(demographics.tb)[1:5]
+dim(demographics.df)
+str(demographics.df)
+demographics.df[1:5,1:5]
 
-dim(samples.tb)
-class(samples.tb)
-str(samples.tb)
-samples.tb[1:5,]
-rownames(samples.tb)[1:5]
+dim(samples.df)
+str(samples.df)
+samples.df[1:5,]
 
-dim(vv.tb)
-class(vv.tb)
-str(vv.tb)
-vv.tb[1:5,1:5]
-rownames(vv.tb)[1:5]
+dim(vv.df)
+str(vv.df)
+vv.df[1:5,1:5]
 
 dim(gt.mx)
 class(gt.mx)
-gt.mx[1:25,1:5]
+gt.mx[10:25,1:5]
 
 # Check consistence of rownames
-sum(rownames(gt.mx) != rownames(vv.tb), na.rm=TRUE)
+sum(rownames(gt.mx) != rownames(vv.df), na.rm=TRUE)
 
 ```
 
@@ -115,86 +89,157 @@ sum(rownames(gt.mx) != rownames(vv.tb), na.rm=TRUE)
 ```{r reshape_variants_annotations}
 
 # select relevant variants annotations
-variants.tb <- 
-  vv.tb %>% 
+variants.df <- 
+  vv.df %>% 
   select(SYMBOL, TYPE, CHROM, POS, REF, ALT, AC, AF, AN, 
          Consequence, SIFT, PolyPhen, CLIN_SIG, 
          GMAF, EUR_MAF, ALT_frequency_in_1k_95)
 
-class(variants.tb)
-rownames(variants.tb)[1:5]
-
-rm(vv.tb)
+rm(vv.df)
 
 # Explore cases with confusing GMAF/EUR_MAF containing & symbol
-nrow(variants.tb %>% filter(grepl("&",GMAF)))
-nrow(variants.tb %>% filter(grepl("&",EUR_MAF)))
-variants.tb %>% 
+nrow(variants.df %>% filter(grepl("&",GMAF)))
+nrow(variants.df %>% filter(grepl("&",EUR_MAF)))
+variants.df %>% 
   filter(grepl("&",EUR_MAF)) %>% 
-  select(c(1:6), GMAF, EUR_MAF)
+  select(c(1:6), GMAF, EUR_MAF) %>% 
+  top_n(10,EUR_MAF)
 
-# There are 3 variants with triplicated values separated by &
-variants.tb[c(1235, 11405, 15894),c("GMAF", "EUR_MAF")]
+# There are even 3 variants with triplicated values separated by &
+variants.df[c(1235, 11405, 15894),c("GMAF", "EUR_MAF")]
 
-# Split cases with confusing EUR_MAF containing & symbol
-variants.tb <- 
-  variants.tb %>% 
+# Split cases with confusing EUR_MAF containing "&"" symbol
+variants.df <- 
+  variants.df %>% 
   separate(EUR_MAF, c("EUR_MAF1", "EUR_MAF2"), "&") 
 
-- Lost row names !
-
 # All duplicated values are the same
-sum(variants.tb$EUR_MAF1 != variants.tb$EUR_MAF2, na.rm=TRUE)
+sum(variants.df$EUR_MAF1 != variants.df$EUR_MAF2, na.rm=TRUE)
 
 # Remove one of the duplicates
-variants.tb <- 
-  variants.tb %>% 
+variants.df <- 
+  variants.df %>% 
   select(-EUR_MAF2)
 
 # split GMAF and EUR_MAF1
-variants.tb <- 
-  variants.tb %>% 
+variants.df <- 
+  variants.df %>% 
   separate(GMAF, c("GMAF_Allele", "GMAF_Fraction"), ":") %>% 
   separate(EUR_MAF1, c("EUR_MAF_Allele", "EUR_MAF_Fraction"), ":") 
 
 # Convert columns to numeric etc
-as.numeric(variants.tb$GMAF_Fraction) -> variants.tb$GMAF_Fraction
-as.numeric(variants.tb$EUR_MAF_Fraction) -> variants.tb$EUR_MAF_Fraction
-NA -> variants.tb$GMAF_Allele[variants.tb$GMAF_Allele == ""]
-NA -> variants.tb$EUR_MAF_Allele[variants.tb$EUR_MAF_Allele == ""]
-as.factor(variants.tb$GMAF_Allele) -> variants.tb$GMAF_Allele
-as.factor(variants.tb$EUR_MAF_Allele) -> variants.tb$EUR_MAF_Allele
+as.numeric(variants.df$GMAF_Fraction) -> variants.df$GMAF_Fraction
+as.numeric(variants.df$EUR_MAF_Fraction) -> variants.df$EUR_MAF_Fraction
+
+# Change "" to NAs
+NA -> variants.df$GMAF_Allele[variants.df$GMAF_Allele == ""]
+NA -> variants.df$EUR_MAF_Allele[variants.df$EUR_MAF_Allele == ""]
+NA -> variants.df$SIFT[variants.df$SIFT == ""]
+NA -> variants.df$PolyPhen[variants.df$PolyPhen == ""]
+NA -> variants.df$CLIN_SIG[variants.df$CLIN_SIG == ""]
+
+# Convert chars to factors
+as.factor(variants.df$GMAF_Allele) -> variants.df$GMAF_Allele
+as.factor(variants.df$EUR_MAF_Allele) -> variants.df$EUR_MAF_Allele
+
+# Change "true" to TRUE
+sum(variants.df$ALT_frequency_in_1k_95 == "true", na.rm = TRUE)
+variants.df <- 
+  variants.df %>% 
+  mutate(frequent_in_1k=as.logical(
+    str_replace_all(ALT_frequency_in_1k_95, "true", TRUE))) %>% 
+  select(-ALT_frequency_in_1k_95)
+sum(variants.df$frequent_in_1k, na.rm=TRUE)
+
+# Split SIFT
+variants.df <- 
+  variants.df %>% 
+  mutate(SIFT_call=sub("\\(.*\\)","",SIFT)) %>% 
+  mutate(SIFT_score=as.numeric(
+    sub(".*\\(","", sub("\\)","",SIFT)))) %>% 
+  select(-SIFT)
+
+# Split PolyPhen
+variants.df <- 
+  variants.df %>% 
+  mutate(PolyPhen_call=sub("\\(.*\\)","",PolyPhen)) %>% 
+  mutate(PolyPhen_score=as.numeric(
+    sub(".*\\(","", sub("\\)","",PolyPhen)))) %>% 
+  select(-PolyPhen)
 
 # Check variants table
-dim(variants.tb)
-class(variants.tb)
-str(variants.tb)
-variants.tb[1:5,1:5]
-rownames(variants.tb)[1:5]
+dim(variants.df)
+str(variants.df)
+variants.df[1:5,1:5]
 
 ```
 
-# explore_covar
+# reshape_covar
 
-```{r explore_covar}
+```{r reshape_covar}
 
 dim(covar.df)
 colnames(covar.df)
 
 attach(covar.df)
 
+# chemo is the same as chemo_self_mra, no missed values
 sum(chemo != chemo_self_mra)
+
+# One missed case in hormone/ hormone_self_mra
+sum(is.na(hormone))
+sum(is.na(hormone_self_mra))
+
+# hormone has 10 differences from hormone_self_mra
 sum(hormone != hormone_self_mra, na.rm=TRUE)
-sum(status2 != status2)
+
+# status is the same as status2, no missed values
+sum(status != status2)
+
+# Race is always 0, no missed data
 sum(race)
+
+# Dismiss split 495 vs 3, no missed data
 sum(dsmiss)
+
+# good_location split 86 vs 412, no missed data
 sum(good_location)
+
+# Deleterious split 480 vs 18, no missed data
 sum(Deleterious)
+
+# Deleterious split 158 vs 340, no missed data
 sum(family_history)
+
+# XRTBrCHAR is the same as XRTBreast, no missed values
 sum(XRTBrCHAR != XRTBreast)
+
+# sub_dx_age_cat split 169 vs 329, no missed data
 sum(sub_dx_age_cat)
 
+# dose
+summary(dose)
+
 detach(covar.df)
+
+# Keep only selected annotations
+selected_annotations <- c(
+  "labid","cc","sub_dx_age","offset",
+  "chemo","hormone","XRTBreast","dose",
+  "Eigen_1","Eigen_2","Eigen_3","Eigen_4","Eigen_5")
+
+# Keep only selected annotations
+covar.df <- covar.df[,selected_annotations]
+rm(selected_annotations)
+
+# change XRTBreast to xrt
+"xrt" -> colnames(covar.df)[7]
+
+# Check result
+dim(covar.df)
+str(covar.df)
+covar.df[1:5,1:5]
+
 
 ```
 
@@ -202,12 +247,29 @@ detach(covar.df)
 
 ```{r explore_demographics}
 
+# Outlook
 dim(demographics.df)
 colnames(demographics.df)
+demographics.df[1:10,1:5]
 
-demographics.tb <- tbl_df(demographics.df)
-class(demographics.df)
-class(demographics.tb)
+# Exclude odd cases
+odd_cases=c("201558","201921","202698","21IAno","387460",
+            "389192","58IR1+","60IA1+","92IRno","98IAno")
+
+demographics.df %>% 
+  filter(Subject_ID %in% odd_cases) %>% 
+  select(1:5)
+
+pheno.df <- demographics.df %>% filter(! Subject_ID %in% odd_cases)
+dim(pheno.df)
+pheno.df[1:10,1:5]
+
+# Explore non-odd cases
+attach(pheno.df)
+
+sum(ID.x != ID.y, na.rm = TRUE)
+sum(is.na(ID.x))
+sum(is.na(ID.y))
 
 samples.df %>% 
   filter(grepl("not_annotated", filter)) %>% 
@@ -226,8 +288,6 @@ samples.df %>%
 demographics.df %>% 
   select(labid.x,labid.y) %>% 
   filter(labid.x %in% not_annotated | labid.y %in% not_annotated)
-
-attach(demographics.df)
 
 demographics.df %>% 
   select(starts_with("labid")) %>% 
@@ -250,9 +310,13 @@ sum(family_history)
 sum(XRTBrCHAR != XRTBreast)
 sum(sub_dx_age_cat)
 
-detach(demographics.df)
+detach(pheno.df)
 
 ```
+
+# reshape_demographics
+
+
 
 # select_relevant_phenotypes_annotations
 
@@ -270,6 +334,8 @@ colnames(phenotypes.df)[1] <- "gwas_id" # for merging with samples.df
 rm(covar.df)
 
 ```
+
+
 
 # add_WES_cases_ids_to_phenotypes_table
 
