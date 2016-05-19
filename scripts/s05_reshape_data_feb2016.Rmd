@@ -1,5 +1,5 @@
 ---
-title: "Update cases IDs, cases annotations and file names: wecare feb2016"
+title: "Reshape and clean data: wecare feb2016"
 author: "Alexey Larionov"
 output: html_document
 ---
@@ -267,9 +267,107 @@ pheno.df[1:10,1:5]
 # Explore non-odd cases
 attach(pheno.df)
 
-sum(ID.x != ID.y, na.rm = TRUE)
-sum(is.na(ID.x))
-sum(is.na(ID.y))
+# --- Compare "x" and "y" columns --- #
+
+# Identical columns
+ID.x[1:5]
+sum(ID.x != ID.y)
+
+cc.x[1:20]
+sum(cc.x != cc.y)
+
+labid.x[1:5]
+sum(as.vector(labid.x) != as.vector(labid.y))
+
+fam_hist[1:5]
+sum(fam_hist != family_history.y)
+sum(as.numeric(sub("none",0,sub("1\\+",1,family_history.x))) != family_history.y)
+
+sub_dx_age.x[1:5]
+sum(sub_dx_age.x != sub_dx_age.y)
+
+hist(sub_dx_age.x) 
+# Consistent with 55 yr selection criteria
+
+dxyr_stratum[1:5]
+age_stratum1[1:5]
+sub_dx_age_cat[1:5]
+
+sub_dx_age.x[1:5]
+refage[1:5]
+
+offset.x[1:5]
+sum(offset.x != offset.y)
+
+hist(offset.x) 
+# consistent with 1+ year between the 1st and 2nd tumours (selection criteria)
+
+chemo_hormone[1:5]
+
+treatment.x[1:5]
+treatment.y[1:5]
+sum(treatment.x != treatment.y)
+
+# Some missed data and discrepansies in endocrine treatment
+# (when compare hormone, hormone_self_mra.x and hormone_self_mra.y)
+hormone[1:5]
+hormone_self_mra.x[1:5]
+hormone_self_mra.y[1:5]
+sum(hormone_self_mra.x != hormone_self_mra.y, na.rm=TRUE)
+sum(hormone != hormone_self_mra.x, na.rm=TRUE)
+sum(is.na(hormone))
+sum(is.na(hormone_self_mra.x))
+sum(is.na(hormone_self_mra.y))
+
+# No missed data or discrepansies in cytotoxic treatment
+# (when compare chemo, chemo_self_mra.x and chemo_self_mra.y)
+chemo[1:5]
+sum(chemo_self_mra.x != chemo_self_mra.y)
+sum(chemo != chemo_self_mra.x)
+
+# No missed data or discrepansies in x-ray treatment
+# (when compare XRTBrCHAR, XRTBreast.x and XRTBreast.y)
+XRTBrCHAR[1:5]
+sum(XRTBreast.x != XRTBreast.y)
+sum(XRTBrCHAR != XRTBreast.x)
+
+# Eigenvectors
+sum(Eigen_1.x != Eigen_1.y)
+sum(Eigen_2.x != Eigen_2.y)
+sum(Eigen_3.x != Eigen_3.y)
+sum(Eigen_4.x != Eigen_4.y)
+sum(Eigen_5.x != Eigen_5.y)
+
+# Mixed fields
+sum(setno.x != setno.y)
+sum(as.vector(registry.x) != as.vector(registry.y))
+sum(good_location.x != good_location.y)
+sum(status.x != status.y)
+sum(status2.x != status2.y)
+sum(status.x != status2.y)
+sum(race.x != race.y)
+sum(sub_race != race.y)
+sum(sub_race)
+
+# ---------- Non x-y ---------- #
+
+# X-ray dose prsented in differentways
+dose[1:5]
+dose_caseloc[1:5]
+dose_num[1:5]
+avedose[1:5]
+
+horm_tmx[1:5]
+tmx[1:5]
+
+cmf[1:5]
+CMF[1:5]
+sum(as.vector(cmf) != as.vector(CMF))
+
+cmf_012[1:5]
+CMF_Only[1:5]
+
+# ========================= Done till here ================================= #
 
 samples.df %>% 
   filter(grepl("not_annotated", filter)) %>% 

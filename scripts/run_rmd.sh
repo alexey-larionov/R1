@@ -42,7 +42,7 @@ echo ""
 
 # Files and folders
 root_folder="/scratch/medgen/scripts/rscripts_05.16"
-rmd_file=${1}
+rmd_file="${1}"
 rmd_script="${root_folder}/scripts/${rmd_file}"
 html_report="${root_folder}/scripts/${rmd_file%.Rmd}.html"
 

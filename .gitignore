@@ -1,4 +1,5 @@
 data*
 misc*
 .Rhistory
+*.Rdata
 *.out
