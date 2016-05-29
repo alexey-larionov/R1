@@ -5,7 +5,7 @@ output: html_document
 ---
 
 started: 01Mar2016
-last updated: 15May2016
+last updated: 28May2016
 
 # start_section
 
@@ -30,6 +30,7 @@ opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
 library(tidyr) # for separate
 library(dplyr) # for piping, filter, select etc
 library(stringr) # for str_replace_all
+library(ggplot2) # for some plots
 
 ```
 
@@ -243,9 +244,11 @@ covar.df[1:5,1:5]
 
 ```
 
-# explore_demographics
+# reshape_demographics_table
 
-```{r explore_demographics}
+## exclude_odd_cases
+
+```{r exclude_odd_cases}
 
 # Outlook
 dim(demographics.df)
@@ -267,46 +270,128 @@ pheno.df[1:10,1:5]
 # Explore non-odd cases
 attach(pheno.df)
 
-# --- Compare "x" and "y" columns --- #
+```
 
-# Identical columns
+## x_y_id_cc_fam
+
+```{r x_y_id_cc_fam}
+
+# Case-control status
+
 ID.x[1:5]
 sum(ID.x != ID.y)
 
 cc.x[1:20]
 sum(cc.x != cc.y)
 
+ggplot(pheno.df) + 
+  aes(as.factor(cc.x), fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+table(cc.x)
+
+# Lables x vs y
+
 labid.x[1:5]
 sum(as.vector(labid.x) != as.vector(labid.y))
+
+# Familial history
 
 fam_hist[1:5]
 sum(fam_hist != family_history.y)
 sum(as.numeric(sub("none",0,sub("1\\+",1,family_history.x))) != family_history.y)
 
+ggplot(pheno.df) + 
+  aes(as.factor(family_history.x), fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+table(family_history.x)
+table(family_history.y)
+
+# No disbalance in familial history between cases and controls
+table(cc.y, family_history.y)
+fisher.test(table(cc.y, family_history.y))
+
+```
+
+## x_y_ages
+
+```{r x_y_ages}
+
+# 1st Ds age (?)
+
 sub_dx_age.x[1:5]
 sum(sub_dx_age.x != sub_dx_age.y)
 
-hist(sub_dx_age.x) 
+ggplot(pheno.df) + 
+  aes(sub_dx_age.x, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth = 1)
 # Consistent with 55 yr selection criteria
+
+# No differences between cases and controls by age
+t.test(sub_dx_age.x~cc.x)
+
+ggplot(pheno.df) + 
+  aes(sub_dx_age.x, fill=as.factor(cc.x)) +
+  geom_density(colour="black", alpha=0.3)
+
+# Compare to Refage (age at 2nd ds???)
+ggplot(pheno.df, colour="black") + 
+  geom_density(aes(refage), fill="red", alpha=0.3) +
+  geom_density(aes(sub_dx_age.x), fill="blue", alpha=0.3)
+
+# No differences between cases and controls by refage
+t.test(refage~cc.x)
+
+ggplot(pheno.df) + 
+  aes(refage, fill=as.factor(cc.x)) +
+  geom_density(colour="black", alpha=0.3)
+
+# Categorical age codings
 
 dxyr_stratum[1:5]
 age_stratum1[1:5]
 sub_dx_age_cat[1:5]
 
-sub_dx_age.x[1:5]
-refage[1:5]
+# Unknown offset
+# consistent with 1+ year between the 1st and 2nd tumours (selection criteria)
 
 offset.x[1:5]
 sum(offset.x != offset.y)
-
 hist(offset.x) 
-# consistent with 1+ year between the 1st and 2nd tumours (selection criteria)
 
-chemo_hormone[1:5]
+# Compare to rstime (~age at ds - age at 2nd ds???)
+ggplot(pheno.df, colour="black") + 
+  geom_density(aes(offset.x), fill="red", alpha=0.3) +
+  geom_density(aes(rstime), fill="blue", alpha=0.3)
 
+```
+
+## x_y_any_treatment
+
+```{r x_y_any_treatment}
+
+# Any treatment 
 treatment.x[1:5]
 treatment.y[1:5]
 sum(treatment.x != treatment.y)
+
+ggplot(pheno.df) + 
+  aes(as.factor(treatment.x), fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+# There was more treatment in controls
+table(cc.x, treatment.x)
+fisher.test(table(cc.x, treatment.x))
+
+# for comparison (neither will be used later)
+chemo_hormone[1:5] 
+
+```
+
+## x_y_hormonal_treatment
+
+```{r x_y_hormonal_treatment}
 
 # Some missed data and discrepansies in endocrine treatment
 # (when compare hormone, hormone_self_mra.x and hormone_self_mra.y)
@@ -319,11 +404,51 @@ sum(is.na(hormone))
 sum(is.na(hormone_self_mra.x))
 sum(is.na(hormone_self_mra.y))
 
+ggplot(pheno.df) + 
+  aes(as.factor(hormone), fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+# There was no disbalance in cases and controls by hormonal treatment
+table(cc.x,hormone)
+fisher.test(table(cc.x, hormone))
+
+# Hormone vs er: 
+# 64% er+ves were not given hormones:
+# old cohort, young patients, cytotoxic instead ...?
+# 11 er-ves were hiven hormones??
+table(er1, hormone)
+sum(is.na(er1))
+
+```
+
+## x_y_cytotoxic_treatment
+
+```{r x_y_cytotoxic_treatment}
+
 # No missed data or discrepansies in cytotoxic treatment
 # (when compare chemo, chemo_self_mra.x and chemo_self_mra.y)
 chemo[1:5]
 sum(chemo_self_mra.x != chemo_self_mra.y)
 sum(chemo != chemo_self_mra.x)
+
+# Unbalanced cases and controls in treated/non-treated by cytotoxics
+ggplot(pheno.df) + 
+  aes(as.factor(chemo), fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+# There was more chemo in controls
+table(cc.x, chemo)
+fisher.test(table(cc.x, chemo))
+
+ggplot(pheno.df) + 
+  aes(as.factor(cc.x), fill=as.factor(chemo)) +
+  geom_bar(colour="black", alpha=0.3)
+
+```
+
+## x_y_x_ray_treatment
+
+```{r x_y_x_ray_treatment}
 
 # No missed data or discrepansies in x-ray treatment
 # (when compare XRTBrCHAR, XRTBreast.x and XRTBreast.y)
@@ -331,221 +456,674 @@ XRTBrCHAR[1:5]
 sum(XRTBreast.x != XRTBreast.y)
 sum(XRTBrCHAR != XRTBreast.x)
 
-# Eigenvectors
+# Unbalanced cases and controls in treated/non-treated by radiotherapy
+ggplot(pheno.df) + 
+  aes(as.factor(XRTBrCHAR), fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+# There was more x_ray_treatment in controls
+table(cc.x, XRTBrCHAR)
+fisher.test(table(cc.x, XRTBrCHAR))
+
+ggplot(pheno.df) + 
+  aes(as.factor(cc.x), fill=as.factor(XRTBrCHAR)) +
+  geom_bar(colour="black", alpha=0.3)
+
+```
+
+## x_y_eigenvectors
+
+Ethnisity: todo
+PCI co-plotting with known populations
+Recalculate eigenvectors?
+
+```{r x_y_eigenvectors}
+
+# Eigenvectors - duplicated
 sum(Eigen_1.x != Eigen_1.y)
 sum(Eigen_2.x != Eigen_2.y)
 sum(Eigen_3.x != Eigen_3.y)
 sum(Eigen_4.x != Eigen_4.y)
 sum(Eigen_5.x != Eigen_5.y)
 
-# Mixed fields
+```
+
+## x_y_mixed_duplicated_fields
+
+```{r x_y_mixed_duplicated_fields}
+
+setno.x[1:5]
 sum(setno.x != setno.y)
+t.test(setno.x~cc.x)
+
+registry.x[1:5]
 sum(as.vector(registry.x) != as.vector(registry.y))
+fisher.test(table(cc.x,registry.x))
+
+good_location.x[1:5]
 sum(good_location.x != good_location.y)
+fisher.test(table(cc.x,good_location.x))
+
+# Status is equal to cc
+status.x[1:5]
 sum(status.x != status.y)
+table(cc.x, status.x)
+fisher.test(table(cc.x, status.x))
+
 sum(status2.x != status2.y)
 sum(status.x != status2.y)
 sum(race.x != race.y)
 sum(sub_race != race.y)
 sum(sub_race)
 
-# ---------- Non x-y ---------- #
+```
 
-# X-ray dose prsented in differentways
+## x_ray_treatment
+
+```{r x_ray_treatment}
+
+# dose
 dose[1:5]
+class(dose)
+summary(dose)
+
+ggplot(pheno.df) + 
+  aes(as.factor(dose), fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+# More x-ray treatment in controls
+fisher.test(table(cc.x, dose))
+
+# Balanced doses in x-ray treated cases and controls
+x <- table(cc.x, dose)[,c(1,2)]
+x
+fisher.test(x)
+rm(x)
+
+# No missed data in dose
+sum(is.na(dose))
+
+# dose_caseloc
 dose_caseloc[1:5]
+class(dose_caseloc)
+hist(dose_caseloc)
+sum(dose_caseloc == 0, na.rm=TRUE)
+sum(dose_caseloc != 0 & dose_caseloc < 1, na.rm=TRUE)
+sum(dose_caseloc >=1, na.rm=TRUE)
+sum(is.na(dose_caseloc))
+
 dose_num[1:5]
+class(dose_num)
+barplot(table(dose_num))
+table(dose_num)
+sum(is.na(dose_num))
+
 avedose[1:5]
+class(avedose)
+hist(avedose)
 
+```
+
+## hormonal_treatment
+
+```{r hormonal_treatment}
+
+# horm_tmx is different from tmx
 horm_tmx[1:5]
-tmx[1:5]
+barplot(table(horm_tmx))
+table(horm_tmx)
+sum(is.na(horm_tmx))
 
+tmx[1:5]
+barplot(table(tmx))
+table(tmx)
+sum(is.na(tmx))
+
+# Treatment by age: hormones more often are given to older patients
+x <- !is.na(hormone)
+ggplot(pheno.df[x,]) + 
+  aes(x = sub_dx_age.x, fill = as.factor(hormone)) +
+  geom_density(colour="black", alpha=0.3)
+rm(x)
+
+t.test(sub_dx_age.x~hormone)
+
+```
+
+## cytotoxic_treatment
+
+```{r cytotoxic_treatment}
+
+# Reminder: chemo is identical to chemo.x/y
+chemo[1:5]
+barplot(table(chemo))
+table(chemo)
+sum(is.na(chemo))
+
+# Treatment by age: cytotoxic are more often given to younger patients
+ggplot(pheno.df) + 
+  aes(x = sub_dx_age.x, fill = as.factor(chemo)) +
+  geom_density(colour="black", alpha=0.3)
+
+t.test(sub_dx_age.x~chemo)
+
+# cmf uses wrong encodings
 cmf[1:5]
+barplot(table(cmf))
+table(cmf)
+sum(is.na(cmf))
+
+pheno.df$cmf <- as.factor(as.vector(pheno.df$cmf))
+
+# cmf012 is numeric cmf
+cmf_012[1:5]
+barplot(table(cmf_012))
+table(cmf_012)
+sum(is.na(cmf_012))
+
+# CMF is coded better than cmf
 CMF[1:5]
+barplot(table(CMF))
+table(CMF)
+sum(is.na(CMF))
+
+# CMF vs age
+ggplot(pheno.df) + 
+  aes(x = sub_dx_age.x, fill = as.factor(CMF)) +
+  geom_density(colour="black", alpha=0.3)
+
+# CMF is different from cmf
 sum(as.vector(cmf) != as.vector(CMF))
 
-cmf_012[1:5]
+# CMF only
 CMF_Only[1:5]
+barplot(table(CMF_Only))
+table(CMF_Only)
+sum(is.na(CMF_Only))
 
-# ========================= Done till here ================================= #
+# # Treatment by age: patients given cytotoxics are younger than those given hormones
+ggplot() + 
+  geom_density(data=pheno.df[chemo==1,], aes(sub_dx_age.x), colour="black", fill="red", alpha=0.25) +
+  geom_density(data=pheno.df[hormone==1,], aes(sub_dx_age.x), colour="black", fill="blue", alpha=0.25)
 
-samples.df %>% 
-  filter(grepl("not_annotated", filter)) %>% 
-  arrange(filter)
+t.test(sub_dx_age.x[chemo==1],sub_dx_age.x[hormone==1])
 
-not_annotated <-
-  samples.df %>% 
-  filter(grepl("not_annotated", filter)) %>% 
-  select(gwas_id)
+```
 
-not_annotated <- as.vector(not_annotated$gwas_id)
+## pathology
 
-samples.df %>% 
-  filter(gwas_id %in% not_annotated)
+```{r pathology}
 
-demographics.df %>% 
-  select(labid.x,labid.y) %>% 
-  filter(labid.x %in% not_annotated | labid.y %in% not_annotated)
+# Stage
+stage_fd[1:5]
+summary(as.factor(stage_fd))
+ggplot(pheno.df) + 
+  aes(as.factor(stage_fd), fill=as.factor(cc.x)) + 
+  geom_bar(colour="black", alpha=0.3)
 
-demographics.df %>% 
-  select(starts_with("labid")) %>% 
-  filter(is.na(labid.x) | is.na(labid.y))
+# No significant differences by stage between cases and controls
+# However, tendency to higher stage in controls, 
+# which might had caused more cytotoxics and x-ray in controls
+ggplot(pheno.df) + 
+  aes(as.factor(cc.x), fill=as.factor(stage_fd)) + 
+  geom_bar(colour="black", alpha=0.3)
+fisher.test(table(cc.x, stage_fd))
 
-demographics.df %>% 
-  select(starts_with("labid")) %>% 
-  filter(labid.x %in% wes.done.not.annotated | labid.y %in% wes.done.not.annotated)
+# Histology
+Histology[1:5]
+unique(as.vector(Histology))
+ggplot(pheno.df) +
+  aes(Histology, fill=Histology) + 
+  geom_bar(colour="black", alpha=0.3)
+table(Histology)
 
+# Histology1
+Histology1[1:5]
+unique(as.vector(Histology1))
+ggplot(pheno.df) +
+  aes(Histology1, fill=Histology1) + 
+  geom_bar(colour="black", alpha=0.3)
+table(Histology1)
 
+sum(as.vector(Histology) != as.vector(Histology1))
+pheno.df[as.vector(Histology) != as.vector(Histology1),c("labid.x","Histology","Histology1")]
 
-sum(chemo != chemo_self_mra)
-sum(hormone != hormone_self_mra, na.rm=TRUE)
-sum(status2 != status2)
-sum(race)
-sum(dsmiss)
-sum(good_location)
-sum(Deleterious)
-sum(family_history)
-sum(XRTBrCHAR != XRTBreast)
-sum(sub_dx_age_cat)
+# histol_cat
+histo1_cat[1:5]
+unique(as.vector(histo1_cat))
 
+# Cases and controls are balanced by histology
+ggplot(pheno.df) +
+  aes(histo1_cat, fill=as.factor(cc.x)) + 
+  geom_bar(colour="black", alpha=0.3)
+table(cc.x, histo1_cat)
+fisher.test(table(cc.x, histo1_cat))
+
+# Balance within ductal and lobular: 
+# non-significant trend to have more lobular in CBC
+ggplot(pheno.df[histo1_cat == "ductal" | histo1_cat == "lobular",]) +
+  aes(histo1_cat, fill=as.factor(cc.x)) + 
+  geom_bar(colour="black", alpha=0.3)
+x <- table(
+  as.vector(cc.x[histo1_cat == "ductal" | histo1_cat == "lobular"]), 
+  as.vector(histo1_cat[histo1_cat == "ductal" | histo1_cat == "lobular"]))
+x
+fisher.test(x)
+rm(x)
+
+# Lobular only
+lobular[1:5]
+unique(as.vector(lobular))
+ggplot(pheno.df) +
+  aes(lobular, fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+Hist_lob_other[1:5]
+unique(as.vector(Hist_lob_other))
+ggplot(pheno.df) +
+  aes(Hist_lob_other, fill=as.factor(cc.x)) +
+  geom_bar(colour="black", alpha=0.3)
+
+```
+
+## receptors
+
+check consistency with treatment?
+much more more er+ ve?
+many er unknown
+
+```{r receptors}
+
+er1[1:5]
+class(er1)
+unique(as.vector(er1))
+barplot(table(as.vector(er1)))
+sum(is.na(er1))
+
+er1_num[1:5]
+class(er1_num)
+unique(as.vector(er1_num))
+barplot(table(as.vector(er1_num)))
+table(as.vector(er1_num))
+sum(is.na(er1_num))
+
+sum(as.vector(er1) != as.vector(er1), na.rm = TRUE)
+
+er1_cat[1:5]
+class(er1_cat)
+unique(as.vector(er1_cat))
+barplot(table(as.vector(er1_cat)))
+table(as.vector(er1_cat))
+sum(is.na(er1_cat))
+
+er_fd[1:5]
+class(er_fd)
+unique(as.vector(er_fd))
+barplot(table(as.vector(er_fd)))
+table(as.vector(er_fd))
+sum(is.na(er_fd))
+
+pr1_cat[1:5]
+class(pr1_cat)
+unique(as.vector(pr1_cat))
+barplot(table(as.vector(pr1_cat)))
+table(as.vector(pr1_cat))
+sum(is.na(pr1_cat))
+
+pr_fd[1:5]
+class(pr_fd)
+unique(as.vector(pr_fd))
+barplot(table(as.vector(pr_fd)))
+table(as.vector(pr_fd))
+sum(is.na(pr_fd))
+
+```
+
+## reproductive_factors
+
+```{r reproductive_factors}
+
+# age_menarche
+
+age_menarche[1:5]
+class(age_menarche)
+unique(age_menarche)
+barplot(table(age_menarche))
+table(age_menarche)
+sum(is.na(age_menarche))
+
+rh_age_menarche[1:5]
+class(rh_age_menarche)
+unique(rh_age_menarche)
+
+hist(rh_age_menarche)
+ggplot(pheno.df) + 
+  aes(rh_age_menarche, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1) +
+  stat_bin(binwidth=1, geom="text", aes(label=..count..), vjust=-1)
+
+table(rh_age_menarche)
+sum(is.na(rh_age_menarche))
+
+# age_menopause
+
+age_menopause[1:5]
+class(age_menopause)
+unique(age_menopause)
+barplot(table(age_menopause))
+table(age_menopause)
+sum(is.na(age_menopause))
+
+# age_menopause_1yrbf_fd
+
+age_menopause_1yrbf_fd[1:5]
+class(age_menopause_1yrbf_fd)
+unique(age_menopause_1yrbf_fd)
+barplot(table(age_menopause_1yrbf_fd))
+hist(age_menopause_1yrbf_fd)
+table(age_menopause_1yrbf_fd)
+sum(is.na(age_menopause_1yrbf_fd))
+
+# age_1fftp_fd
+
+age_1fftp_fd[1:5]
+class(age_1fftp_fd)
+unique(age_1fftp_fd)
+barplot(table(age_1fftp_fd))
+hist(age_1fftp_fd)
+
+ggplot(pheno.df) + 
+  aes(age_1fftp_fd, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1)
+
+table(age_1fftp_fd)
+sum(is.na(age_1fftp_fd))
+
+# Num_ftp_fd
+
+Num_ftp_fd[1:5]
+class(Num_ftp_fd)
+unique(Num_ftp_fd)
+barplot(table(Num_ftp_fd))
+hist(Num_ftp_fd)
+
+ggplot(pheno.df) + 
+  aes(Num_ftp_fd, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1)
+
+table(Num_ftp_fd)
+sum(is.na(Num_ftp_fd))
+
+# num_preg
+
+num_preg[1:5]
+class(num_preg)
+unique(num_preg)
+barplot(table(num_preg))
+table(num_preg)
+sum(is.na(num_preg))
+
+```
+
+## BMI
+
+```{r BMI}
+# BMI_age18
+
+BMI_age18[1:5]
+class(BMI_age18)
+hist(BMI_age18)
+
+ggplot(pheno.df) + 
+  aes(BMI_age18, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1)
+
+summary(BMI_age18)
+sum(is.na(BMI_age18))
+
+# BMI_dx
+
+BMI_dx[1:5]
+class(BMI_dx)
+hist(BMI_dx)
+
+ggplot(pheno.df) + 
+  aes(BMI_dx, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1)
+
+summary(BMI_dx)
+sum(is.na(BMI_dx))
+
+# BMI_age18 vs BMI_dx
+
+plot(BMI_age18, BMI_dx)
+
+ggplot(pheno.df) + 
+  aes(x=BMI_age18, y=BMI_dx, colour=as.factor(cc.x)) +
+  geom_point(alpha=0.3) + 
+  geom_smooth(method="lm")
+
+# BMI_dx
+
+BMI_ref[1:5]
+class(BMI_ref)
+hist(BMI_ref)
+
+ggplot(pheno.df) + 
+  aes(BMI_ref, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1)
+
+summary(BMI_ref)
+sum(is.na(BMI_ref))
+
+# BMI_ref vs BMI_dx
+
+plot(BMI_ref, BMI_dx)
+
+ggplot(pheno.df) + 
+  aes(x=BMI_ref, y=BMI_dx, colour=as.factor(cc.x)) +
+  geom_point(alpha=0.3) + 
+  geom_smooth(method="lm")
+
+```
+
+## general_data_fields
+
+```{r general_data_fields}
+
+# DOB
+
+DOB[1:5]
+class(DOB)
+hist(DOB)
+
+# dxyr_stratum
+
+dxyr_stratum[1:5]
+class(dxyr_stratum)
+summary(dxyr_stratum)
+barplot(table(dxyr_stratum))
+table(dxyr_stratum)
+sum(is.na(dxyr_stratum))
+
+# age_stratum1
+
+age_stratum1[1:5]
+class(age_stratum1)
+summary(age_stratum1)
+barplot(table(age_stratum1))
+table(age_stratum1)
+sum(is.na(age_stratum1))
+
+# sub_dx_age_cat
+
+sub_dx_age_cat[1:5]
+class(sub_dx_age_cat)
+summary(sub_dx_age_cat)
+barplot(table(sub_dx_age_cat))
+table(sub_dx_age_cat)
+sum(is.na(sub_dx_age_cat))
+
+# refage
+
+refage[1:5]
+class(refage)
+summary(refage)
+hist(refage)
+
+ggplot(pheno.df) + 
+  aes(refage, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1)
+
+summary(refage)
+sum(is.na(refage))
+
+# rstime
+
+rstime[1:5]
+class(rstime)
+summary(rstime)
+hist(rstime)
+sum(is.na(rstime))
+
+```
+
+## explore_rstime_and_offset
+
+```{r explore_rstime_and_offset}
+
+hist(offset.x)
+
+hist(rstime)
+hist(refage - sub_dx_age.x)
+
+ggplot(pheno.df) + 
+  geom_density(aes(rstime), fill="red", colour="black", alpha=0.3) +
+  geom_density(aes(refage - sub_dx_age.x), fill="blue", colour="black", alpha=0.3)
+
+ggplot(pheno.df) + 
+  aes(refage - sub_dx_age.x, fill=as.factor(cc.x)) +
+  geom_histogram(colour="black", alpha=0.3, binwidth=1)
+
+ggplot(pheno.df) + 
+  aes(refage - sub_dx_age.x, fill=as.factor(cc.x)) +
+  geom_density(colour="black", alpha=0.3)
+
+ggplot(pheno.df) + 
+  geom_density(aes(refage), fill="red", colour="black", alpha=0.3) +
+  geom_density(aes(sub_dx_age.x), fill="blue", colour="black", alpha=0.3)
+
+```
+
+## unknown_fields
+
+```{r unknown_fields}
+
+# dsmiss
+
+dsmiss[1:5]
+class(dsmiss)
+summary(dsmiss)
+barplot(table(dsmiss))
+table(dsmiss)
+sum(is.na(dsmiss))
+
+# conf_miss
+
+conf_miss[1:5]
+class(conf_miss)
+summary(conf_miss)
+barplot(table(conf_miss))
+table(conf_miss)
+sum(is.na(conf_miss))
+
+# dsmiss vs conf_miss
+
+sum(dsmiss != conf_miss, na.rm=TRUE)
+
+# Phase
+
+Phase[1:5]
+class(Phase)
+summary(Phase)
+barplot(table(Phase))
+table(Phase)
+sum(is.na(Phase))
+
+# Deleterious
+
+Deleterious[1:5]
+class(Deleterious)
+summary(Deleterious)
+barplot(table(Deleterious))
+table(Deleterious)
+sum(is.na(Deleterious))
+
+# Detach pheno data frame
 detach(pheno.df)
 
 ```
 
-# reshape_demographics
+## reshape_pheno
 
+```{r reshape_pheno}
 
+# Select columns
+pheno.df <- pheno.df %>% select(
+  labid = labid.x,
+  cc = cc.x,
+  family_history = family_history.y,
+  sub_dx_age = sub_dx_age.x,
+  refage = refage,
+  rstime = rstime,
+  offset = offset.x,
+  rh_age_menarche = rh_age_menarche,
+  age_menopause = age_menopause,
+  num_preg = num_preg,
+  BMI_age18 = BMI_age18,
+  BMI_dx = BMI_dx,
+  BMI_ref = BMI_ref,
+  Eigen_1 = Eigen_1.x,
+  Eigen_2 = Eigen_2.x,
+  Eigen_3 = Eigen_3.x,
+  Eigen_4 = Eigen_4.x,
+  Eigen_5 = Eigen_5.x,
+  stage_fd = stage_fd,
+  histo1_cat = histo1_cat,
+  er1 = er1,
+  pr1_cat = pr1_cat,
+  hormone = hormone,
+  chemo = chemo,
+  cmf=CMF,
+  XRTBrCHAR = XRTBrCHAR,
+  dose_caseloc = dose_caseloc)
 
-# select_relevant_phenotypes_annotations
+# Recode categorical pr to NA, 0 and 1
+pheno.df <- pheno.df %>% mutate(
+  pr1 = ifelse(pr1_cat=="negative", 0,
+        ifelse(pr1_cat=="positive", 1,
+        NA)))
 
-```{r select_relevant_phenotype_annotations}
+# Substitute zero age of menarche to NA
+pheno.df <- pheno.df %>% mutate(
+  age_menarche = ifelse(rh_age_menarche==0, NA, rh_age_menarche))
 
-phenotypes.df <- 
-  covar.df %>% 
-  select(labid, cc, 
-         sub_dx_age, offset, family_history, 
-         chemo, hormone, XRTBreast, dose, 
-         Eigen_1, Eigen_2, Eigen_3, Eigen_4, Eigen_5)
-
-colnames(phenotypes.df)[1] <- "gwas_id" # for merging with samples.df
-
-rm(covar.df)
-
-```
-
-
-
-# add_WES_cases_ids_to_phenotypes_table
-
-```{r add_WES_cases_ids_to_phenotypes_table}
-
-# Explore cases submitted for WES
-sort(table(samples.df$gwas_id))
-
-# Explore cases annotated in GWAS
-sort(table(phenotypes.df$gwas_id))
-
-# Merge samples and phenotypes tables
-merged.df <- merge(samples.df, phenotypes.df, by="gwas_id")
-dim(merged.df)
-
-# Explore cases in the merged set cases missed and measured twice in wes
-sort(table(merged.df$gwas_id))
-
-# Cases without wes results (failes sequencing)
-sort(table(merged.df$gwas_id))[ sort(table(merged.df$gwas_id)) == 0 ]
-
-# Cases sequenced twice
-sort(table(merged.df$gwas_id))[ sort(table(merged.df$gwas_id)) == 2 ]
-
-# Look closer into two samples that had been measured twice
-merged.df[merged.df$gwas_id %in% c("id259643", "id272715"),]
-
-# For case sequenced twice: exclude measurement with lower coverage (as in lab records)
-cases_to_exclude <- merged.df$merged_id %in% c("P4_F01_id259643", "P5_D07_id272715")
-phenotypes.df <- merged.df[!cases_to_exclude, ]
-dim(phenotypes.df)
-
-# Sort phenotypes table
-phenotypes.df <- phenotypes.df %>% arrange(wes_id)
-
-# Clean-up
-rm(merged.df, samples.df, cases_to_exclude)
+# Removw corrected and recoded fields
+pheno.df <- pheno.df %>% select(-rh_age_menarche, -pr1_cat)
 
 ```
 
-At this point phenotypes table contains information about 498 samples.  
-These are all annotated samples placed on WES plates.  
-12 of 512 WES samples were removed because they had no phenotype annotations.
-2 samples were removed because they were placed to the plates in duplicate.
+# merge_pheno_and_covar
+tbd
 
-# reshape_genotypes_table
-
-```{r reshape_genotypes_table}
-
-# Rename genotype table
-genotypes.mx <- gt.pf.msk.lof.mx
-rm(gt.pf.msk.lof.mx)
-
-# Update column names in genotype table
-colnames(genotypes.mx) <- sub(".GT$","",colnames(genotypes.mx))
-colnames(genotypes.mx)
-
-# Get IDs of annotated cases (from GWAS dataset)
-annotated.cases <- as.vector(phenotypes.df$wes_id)
-length(annotated.cases)
-
-# Get IDs of successfully sequenced cases (from WES genotypes table)
-sequenced.cases <- colnames(genotypes.mx)
-length(sequenced.cases)
-
-# Cases to analyse
-selected.cases <- sort(intersect(annotated.cases, sequenced.cases))
-length(selected.cases)
-rm(annotated.cases, sequenced.cases)
-
-# Select cases with annotated phenotypes
-genotypes.mx <- genotypes.mx[,selected.cases]
-dim(genotypes.mx)
-
-# Use merged IDs for column names in genotype table
-rownames(phenotypes.df) <- phenotypes.df$wes_id
-colnames(genotypes.mx) <- phenotypes.df[selected.cases,]$merged_id
-
-```
-
-# update_phenotypes_table
-
-```{r update_phenotypes_table}
-
-# Remove ceses that failed sequencing
-phenotypes.df <- phenotypes.df[selected.cases,]
-
-# Reorder columns
-phenotypes.df <- phenotypes.df[,c("merged_id", "wes_id", "gwas_id", "cc", "offset", "family_history", "sub_dx_age", "chemo", "hormone", "XRTBreast", "Eigen_1", "Eigen_2", "Eigen_3", "Eigen_4", "Eigen_5")]
-  
-# Place merged id to rownames
-rownames(phenotypes.df) <- phenotypes.df[,1]
-
-# Clean-up
-rm(selected.cases)
-
-```
-
-At this point phenotypes and genotypes tables contains information about 483 samples.  
-These are all annotated samples which were successfully sequenced:  
-- 2 samples were removed because they were placed to the plates in duplicate
-- 12 of 512 WES samples were removed because they had no phenotype annotations
-- 15 annotated cases failed sequencing
-
-Variants and genotypes tables contain information about 5,439 high impact variants 
-that have a potential to cause loss of the protein functuon.
+# compile_reshaped_dataset 
+tbd
 
 # save_data
 
 ```{r save_data}
 
-save.image(file="data/s04_reshape_data_feb2016.RData")
+save.image(file="data/s05_reshape_data_feb2016_tmp.RData")
 
 ```
 
