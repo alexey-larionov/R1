@@ -5,7 +5,7 @@ output: html_document
 ---
 
 started: 01Mar2016
-last updated: 02Jun2016
+last updated: 26Jun2016
 
 # start_section
 
@@ -42,7 +42,8 @@ load(file="data/s04_filter_by_effect_feb2016.RData")
 ls()
 
 vv.df <- vv.std
-gt.mx <- gt.std
+genotypes.mx <- gt.std
+colnames(genotypes.mx) <- sub(".GT", "", colnames(genotypes.mx))
 
 rm(vv.std, gt.std, gq.std, dp.std, ref.std, alt.std)
 rm(vv.str, gt.str, gq.str, dp.str, ref.str, alt.str)
@@ -50,7 +51,7 @@ rm(vv.rel, gt.rel, gq.rel, dp.rel, ref.rel, alt.rel)
 
 ls()
 
-# I do NOT convert_dfs_to_tables because it loses row manes. 
+# I do NOT convert_dfs_to_tables because it loses row names. 
 # However, it could be considered later, 
 # when row names handling in tables is fixed. 
 
@@ -76,12 +77,12 @@ dim(vv.df)
 str(vv.df)
 vv.df[1:5,1:5]
 
-dim(gt.mx)
-class(gt.mx)
-gt.mx[10:25,1:5]
+dim(genotypes.mx)
+class(genotypes.mx)
+genotypes.mx[10:25,1:5]
 
 # Check consistence of rownames
-sum(rownames(gt.mx) != rownames(vv.df), na.rm=TRUE)
+sum(rownames(genotypes.mx) != rownames(vv.df), na.rm=TRUE)
 
 ```
 
@@ -89,16 +90,20 @@ sum(rownames(gt.mx) != rownames(vv.df), na.rm=TRUE)
 
 ```{r reshape_variants_annotations}
 
+# Move variants IDs to explicit variable
+vv.df <- cbind(rownames(vv.df),vv.df)
+"VarID" -> colnames(vv.df)[1]
+
 # select relevant variants annotations
 variants.df <- 
   vv.df %>% 
-  select(SYMBOL, TYPE, CHROM, POS, REF, ALT, AC, AF, AN, 
+  select(VarID, SYMBOL, TYPE, CHROM, POS, REF, ALT, AC, AF, AN, 
          Consequence, SIFT, PolyPhen, CLIN_SIG, 
          GMAF, EUR_MAF, ALT_frequency_in_1k_95)
 
 rm(vv.df)
 
-# Explore cases with confusing GMAF/EUR_MAF containing & symbol
+# Explore cases with confusing GMAF/EUR_MAF containing & symbol (as inserted by VEP)
 nrow(variants.df %>% filter(grepl("&",GMAF)))
 nrow(variants.df %>% filter(grepl("&",EUR_MAF)))
 variants.df %>% 
@@ -254,14 +259,16 @@ dim(demographics.df)
 colnames(demographics.df)
 demographics.df[1:10,1:5]
 
-# Exclude odd cases
+# List of odd cases
 odd_cases=c("201558","201921","202698","21IAno","387460",
             "389192","58IR1+","60IA1+","92IRno","98IAno")
 
+# Show odd cases
 demographics.df %>% 
   filter(Subject_ID %in% odd_cases) %>% 
   select(1:5)
 
+# Exclude odd cases
 pheno.df <- demographics.df %>% filter(! Subject_ID %in% odd_cases)
 dim(pheno.df)
 pheno.df[1:10,1:5]
@@ -281,7 +288,9 @@ duplicated_cases <- as.vector(duplicated_cases[,1])
 duplicated_cases
 
 # Phenotype annotations for the duplicate record are identical
-pheno.df %>% filter(Subject_ID %in% duplicated_cases)
+pheno.df %>% 
+  filter(Subject_ID %in% duplicated_cases) %>% 
+  select(1:5)
 
 pheno.df <- pheno.df %>% filter(!duplicated(Subject_ID))
 dim(pheno.df)
@@ -1612,9 +1621,11 @@ sum(is.na(age_menarche)) # to be preserved
 
 detach(ph.df)
 
-ph.df <- ph.df %>% 
+phen_types.df <- ph.df %>% 
   select(
+    gwas_id = labid, 
     cc = cc.x, 
+    family_history = family_history,
     age_dx = sub_dx_age.x, 
     age_ref = refage, 
     rstime = rstime,
@@ -1640,7 +1651,63 @@ ph.df <- ph.df %>%
     BMI_dx = BMI_dx, 
     BMI_ref = BMI_ref)
 
-rm(pheno.df, covar.df)
+rm(ph.df, pheno.df, covar.df)
+
+```
+
+# merge_phenotypes_and_samples
+
+```{r merge_phenotypes_and_samples}
+
+phenotypes.df <- full_join(samples.df, phen_types.df, by="gwas_id")
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:10, 1:7]
+
+rm(samples.df, phen_types.df)
+
+```
+
+# data_summary
+
+```{r data_summary}
+
+ls()
+
+dim(genotypes.mx)
+genotypes.mx[1:5,1:5]
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+dim(variants.df)
+colnames(variants.df)
+variants.df[1:5,1:5]
+
+# check consistency of samples in genotypes and phenotypes
+genotype_samples <- colnames(genotypes.mx)
+length(genotype_samples)
+
+all_phenotype_samples <- 
+  phenotypes.df %>% select(wes_id)
+all_phenotype_samples <- as.vector(all_phenotype_samples[,1])
+length(all_phenotype_samples)
+
+pass_phenotype_samples<- 
+  phenotypes.df %>% filter(filter=="pass") %>% select(wes_id)
+pass_phenotype_samples <- as.vector(pass_phenotype_samples[,1])
+length(pass_phenotype_samples)
+
+sum( genotype_samples %in% all_phenotype_samples )
+sum( genotype_samples %in% pass_phenotype_samples )
+
+rm(genotype_samples, all_phenotype_samples, pass_phenotype_samples)
+
+# check consistency of variants in genotypes and variants
+sum(rownames(genotypes.mx) != variants.df$VarID )
 
 ```
 
@@ -1648,7 +1715,7 @@ rm(pheno.df, covar.df)
 
 ```{r save_data}
 
-save.image(file="data/s05_reshape_data_feb2016_tmp.RData")
+save.image(file="data/s05_reshape_data_feb2016.RData")
 
 ```
 
