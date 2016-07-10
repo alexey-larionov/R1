@@ -1,0 +1,285 @@
+---
+title: "Calculate glm for individual variants, wecare feb2016"
+author: "Alexey Larionov"
+output: html_document
+---
+
+started: Mar2016  
+last_updated: 10Jul2016
+
+# start_section
+
+```{r start_section}
+
+# Start time
+Sys.time()
+
+# Clean-up
+rm(list=ls())
+graphics.off()
+
+# Set root working folder
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scripts/rscripts_05.16")
+
+library(statmod) # for glm.scoretest
+
+```
+
+# load_and_check_data
+
+```{r load_and_check_data}
+
+load(file="data/s06_recalculate_afs_feb2016.RData")
+ls()
+
+dim(genotypes.mx)
+genotypes.mx[1:5,1:5]
+
+dim(phenotypes.df)
+colnames(phenotypes.df)
+str(phenotypes.df)
+phenotypes.df[1:5,1:5]
+
+dim(variants.df)
+colnames(variants.df)
+str(variants.df)
+variants.df[1:5,1:5]
+
+# Check consistence of tables
+sum(rownames(genotypes.mx) != rownames(variants.df))
+sum(colnames(genotypes.mx) != rownames(phenotypes.df))
+
+```
+
+# calculate_associations_per_variant
+
+```{r calculate_associations_per_variant}
+
+# To Dave: How to deal with NAs in histology, ER etc?
+
+# Phenotype vector for the model
+phenotype <- phenotypes.df$cc
+
+# Covariates for the model
+
+# --- Tumour --- #
+#summary(phenotypes.df$hist_cat)
+lobular <- as.numeric(phenotypes.df$hist_cat == "lobular")
+#ductal <- as.numeric(phenotypes.df$hist_cat == "ductal")
+#medullary <- as.numeric(phenotypes.df$hist_cat == "medullary")
+er1 <- phenotypes.df$er1
+stage <- phenotypes.df$stage
+
+# --- Treatment --- #
+hormone <- phenotypes.df$hormone
+xray <- phenotypes.df$br_xray_dose
+#summary(phenotypes.df$chemo_cat)
+#cmf <- as.numeric(phenotypes.df$chemo_cat == "CMF")
+#other_cytotoxic <- as.numeric(phenotypes.df$chemo_cat == "Oth")
+#no_cytotoxc <- as.numeric(phenotypes.df$chemo_cat == "no")
+chemo <- as.numeric(phenotypes.df$chemo_cat != "no")
+
+# --- Host --- #
+num_preg <- phenotypes.df$num_preg
+#BMI_dx <- phenotypes.df$BMI_dx
+
+# --- Etnisity --- #
+eigen1 <- phenotypes.df$Eigen_1
+eigen2 <- phenotypes.df$Eigen_2
+eigen3 <- phenotypes.df$Eigen_3
+
+# Add header to the output table
+variants_assoc.mx.chr <- c("Variant", "N_cases", "Effect", "SE", "P_Wald", "P_LRT", "P_Score")
+
+# For each variant (takes ~5min for ~20k variants x ~ 400 cases)
+for ( variant in rownames(genotypes.mx) ) {
+  
+  # Get genotypes
+  #variant="var000548761"
+  #variant="var000000184"
+  genotype <- genotypes.mx[variant,]
+
+  # Fit model including genotype
+  # This model includes a minimal set of factors only
+  # How to handle missed values ???
+  glm.geno <- glm(phenotype ~ genotype +
+    lobular +
+    er1 + 
+    stage +
+    hormone +
+    xray +
+    chemo +
+    num_preg +
+    eigen1 +
+    eigen2 +
+    eigen3, 
+    family = binomial(link = "logit"))
+  
+  #summary(glm.geno)
+  #str(glm.geno$model)
+  cases.included <- nrow(glm.geno$model)
+  genotypes.in.model <- glm.geno$model$genotype
+  
+  # Calculate null-model w/o genotype
+  glm.null <- glm(phenotype ~ +
+    lobular +
+    er1 + 
+    stage +
+    hormone +
+    xray +
+    chemo +
+    num_preg +
+    eigen1 +
+    eigen2 +
+    eigen3, 
+    subset=!is.na(genotype),
+    family = binomial(link = "logit"))
+
+  #summary(glm.null)
+  #dim(glm.null$model)
+  #str(glm.null$model)
+  
+  # Estimate difference between models
+	chi.stat.LRT = 2*(logLik(glm.geno) - logLik(glm.null))
+	P.LRT = 1 - pchisq(chi.stat.LRT, df=1)
+	
+	# Test for adding genotype to a GLM
+	Score.Z = glm.scoretest(glm.null, genotypes.in.model, dispersion=NULL)
+	P.Score = 2 * (1 - pnorm(abs(Score.Z)))
+	
+	# Estimate, SE and P.Wald
+	if ("genotype" %in% rownames(summary(glm.geno)$coefficients)){
+		Effect <- coef(summary(glm.geno))["genotype", "Estimate"]
+		SE <- coef(summary(glm.geno))["genotype", "Std. Error"]
+		P.Wald <- coef(summary(glm.geno))["genotype", "Pr(>|z|)"]
+	}	else {
+		Effect <- NA
+		SE <- NA
+		P.Wald <- NA
+  }
+
+	# Summarise and format results
+  results <- c(variant, 
+        cases.included, 
+        round(Effect,3), 
+        round(SE, 3), 
+        format(P.Wald, scientific=T, digits=3), 
+        format(P.LRT, scientific=T, digits=3), 
+        format(P.Score, scientific=T, digits=3))
+
+  # Add to output table
+  variants_assoc.mx.chr <- rbind(variants_assoc.mx.chr, results)
+
+}
+
+# Clean-up
+rm(phenotype, genotype, 
+   lobular, er1, stage, 
+   hormone, xray, chemo, 
+   num_preg, 
+   eigen1, eigen2, eigen3)
+
+rm(variant, 
+   cases.included, genotypes.in.model, 
+   Effect, SE, P.Wald, P.LRT, P.Score, 
+   chi.stat.LRT, Score.Z, results, 
+   glm.geno, glm.null)
+
+```
+
+# reshape_results_matrix
+
+```{r reshape_results_matrix}
+
+# Check dimentions
+dim(variants_assoc.mx.chr)
+
+# Make proper colnames
+colnames(variants_assoc.mx.chr) <- variants_assoc.mx.chr[1,]
+variants_assoc.mx.chr <- variants_assoc.mx.chr[-1,]
+
+# Make proper rownames
+rownames(variants_assoc.mx.chr) <- variants_assoc.mx.chr[,1]
+variants_assoc.mx.chr <- variants_assoc.mx.chr[,-1]
+
+# Convert to numeric
+variants_assoc.mx <- matrix(
+  as.numeric(variants_assoc.mx.chr), 
+  nrow=nrow(variants_assoc.mx.chr))
+
+colnames(variants_assoc.mx) <- colnames(variants_assoc.mx.chr)
+rownames(variants_assoc.mx) <- rownames(variants_assoc.mx.chr)
+
+NA -> variants_assoc.mx[is.nan(variants_assoc.mx)]
+
+# Clean-up
+rm(variants_assoc.mx.chr)
+
+```
+
+# save_data
+
+```{r save_data}
+
+ls()
+dim(genotypes.mx)
+genotypes.mx[1:7, 1:5]
+
+dim(phenotypes.df)
+phenotypes.df[1:7, 1:5]
+
+dim(variants_assoc.mx)
+variants_assoc.mx[1:7,]
+
+dim(variants.df)
+variants.df[1:7,1:5]
+
+save.image(file="data/s07_variants_glm_feb2016.RData")
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```
+
+# Notes for a model with maximal number of factors
+  
+m <- glm(phenotype ~ genotype +
+  ductal + ductal * genotype +
+  lobular + lobular * genotype +
+  medullary + medullary * genotype + 
+  er1 + er1 * genotype + 
+  eigen1 +
+  eigen2 +
+  eigen3 +
+  stage +
+  hormone +
+  xray +
+  cmf +
+  other_cytotoxic +
+  no_cytotoxc +
+  num_preg +
+  BMI_dx, 
+  family = binomial(link = "logit"))
+
+Coefficients for interaction terms may often be NA 
+because of high collinearity with histology or er 
+in context of rare variants
+
+rm(phenotype, genotype, 
+   ductal, lobular, medullary, er1, 
+   eigen1, eigen2, eigen3, 
+   stage, hormone, xray, cmf, 
+   other_cytotoxic, no_cytotoxc, 
+   num_preg, BMI_dx, 
+   m, sum_genotypes)
+
+DC considered this model excessive because of 
+low amount of data
