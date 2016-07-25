@@ -1,0 +1,675 @@
+---
+title: "Exploring SKAT package"
+author: "AL"
+date: "July 18, 2016"
+output: html_document
+---
+
+# Summary
+
+Exploring different options available in SKAT package.  
+Selecting options most suited for wecare dataset. 
+
+# start_section
+
+```{r }
+
+Sys.time()
+rm(list=ls())
+graphics.off()
+
+```
+
+# load_library_and_test_data
+
+```{r load_library_and_test_data}
+
+rm(list=ls())
+library(SKAT)
+
+data(SKAT.example)
+names(SKAT.example)
+attach(SKAT.example)
+ls()
+
+# Matrix of genotypes
+#View(Z)
+Z[1:5,1:5]
+class(Z)
+dim(Z)
+
+# Matrix of covariates
+#View(X)
+X[1:5,]
+class(X)
+dim(X)
+
+# Matrix of cont. phenotypes
+#View(y.c)
+y.c[1:5,]
+class(y.c)
+dim(y.c)
+
+# Vector of binary phenotypes
+class(y.b)
+y.b[1:5]
+length(y.b)
+
+# Get necessary data out of the SKAT.example
+ph <- y.b # phenotype: 2000 cases
+gn <- Z # genotype: 2000 cases (rows) x 67 SNPs (columns)
+c1 <- X[,1] # covariate 1: 2000 cases
+c2 <- X[,2] # covariate 2: 2000 cases
+
+# Remove SKAT.example
+detach(SKAT.example)
+rm(SKAT.example)
+
+# Get a subset of data for 200 cases only
+ph.s <- ph[c(1:100,1001:1100)] # phenotype
+gn.s <- gn[c(1:100,1001:1100),] # genotype
+c1.s <- c1[c(1:100,1001:1100)] # covariate 1
+c2.s <- c2[c(1:100,1001:1100)] # covariate 2
+
+```
+
+# skat_package_workflow
+
+1) Make SKAT_Null_Model w/o inclusion of genotype
+
+2) Estimate p-value for addition of genotype (using SKAT function)
+
+```{r skat_package_workflow}
+
+# SKAT null model
+skat.reg.null <- SKAT_Null_Model(
+  ph ~ c1 + c2, 
+  out_type="D")
+
+# Add genotypes into model
+skat.reg.geno <- SKAT(gn, skat.reg.null)
+skat.reg.geno$p.value
+
+```
+
+# old_style_adjustment_for_small_sample_sizes
+
+It is applied by SKAT_null_model automatically, if sample size is < 2000 (wecare sample size ~500)
+
+It significantly increases calculation time, especially for the null-model calculation (hundreds of times). Default calculation of the adjustment can be suppressed. 
+
+This adjustment is not required by SKATBinary, because SKATBinary uses advanced p-value assessment techniques, such as enhanced resampling (ER) described later.  
+
+In conclusion: 
+it seems that this feature may be suppressed for SKATBinary or SKATBinarySingle; 
+Could it be used for SKAT_Commonrare? 
+
+```{r old_style_adjustment_for_small_sample_sizes}
+
+# With adjustment for small sample sizes
+system.time(
+  skat.reg.null.aj <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    out_type="D")
+)
+
+system.time(
+  skat.reg.geno.aj <- SKAT(
+    gn.s, 
+    skat.reg.null.aj, 
+    kernel="linear.weighted")
+)
+
+skat.reg.geno.aj$p.value
+
+# Without adjustment for small sample sizes
+
+system.time(
+  skat.reg.null.no.aj <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    Adjustment = FALSE, 
+    out_type="D")
+)
+
+system.time(
+  skat.reg.geno.no.aj <- SKAT(
+    gn.s, 
+    skat.reg.null.no.aj, 
+    kernel="linear.weighted")
+)
+
+skat.reg.geno.no.aj$p.value
+
+```
+
+# old_style_resampling
+
+p-value can be obtained using analytical estimate or empirically: from permutation-like bootstraping/resampling.  
+
+Original SKAT does not use resampling by default.  In contrast, SKATBinary may use and optimised resampling version by default, depending on MAF and other factors. 
+
+Original SKAT resampling is performed during the null-model significantly increases calculation time if does more than 100,000 tests.  
+
+For comparison: the default number of tests for efficiant resampling implementd in SKATBinary is 2,000,000
+
+In conclusion: not needed for SKATBinary or SKATBinary_Single. 
+Could it be used for SKAT_Commonrare?
+
+```{r old_style_resampling}
+
+system.time(
+  skat.null.s <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    out_type="D")
+)
+
+system.time(
+  skat.null.s.rs <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    n.Resampling=100000, 
+    out_type="D")
+)
+
+skat.reg.s.rs <- SKAT(
+  gn.s, 
+  skat.null.s.rs, 
+  kernel = "linear.weighted")
+
+skat.reg.s.rs$p.value
+
+Get_Resampling_Pvalue(skat.reg.s.rs)
+
+```
+
+# effect_of_weighting_by_frequencies 
+
+Choice of weights may have a profound effect on the SKAT p-value
+
+```{r effect_of_weighting_by_frequencies}
+
+# Effect of weights on result
+
+skat.reg.geno.dw <- SKAT(gn, 
+     skat.reg.null, 
+     kernel = "linear.weighted")
+
+skat.reg.geno.dw$p.value
+
+skat.reg.geno.mbw <- SKAT(gn, 
+     skat.reg.null, 
+     kernel = "linear.weighted", 
+     weights.beta=c(0.5,0.5))
+
+skat.reg.geno.mbw$p.value
+
+```
+
+# exploring_weights
+
+Default SKAT weights has sharp drop in common variants, as compared to the Madsen-Browing weights. 
+
+```{r exploring_weights}
+
+# --- Default weight --- #
+maf <- 1:1000/1000
+plot(maf, dbeta(maf, 1, 25), main="Default beta(1,25) weights")
+
+plot(maf[1:150], 
+     dbeta(maf[1:150], 0.5, 0.5), 
+     main="Madsen-Browing: beta(0.5,0.5) weights")
+
+plot(maf[1:150], 
+     dbeta(maf[1:150], 1, 25),
+     main="Default SKAT: beta(1,25) weights")
+
+w <- Get_Logistic_Weights_MAF(maf, 0.07, 150)
+plot(maf[1:150], 
+     w[1:150], 
+     main="Logistic weights: 0.07-150")
+
+
+# --- 3 weights selected for using in wecare --- #
+plot(maf[1:150], 
+     dbeta(maf[1:150], 0.5, 0.5) / dbeta(maf[1], 0.5, 0.5), 
+     type="l", lwd=3, col="red", 
+     xlab="AF", ylab="relative weight", 
+     main="Different weights provided in SKAT package")
+lines(maf[1:150], dbeta(maf[1:150], 1, 25) / dbeta(maf[1], 1, 25),
+     type="l", lwd=3, col="green")
+lines(maf[1:150], w[1:150], 
+      type="l", lwd=3, col="blue")
+
+legend("topright", 
+       c("Madsen-Browing: 1 / sqrt(maf*(1-maf))",
+         "Default SKAT: beta(1,25)",
+         "Logistic weights: 0.07-150"), 
+       lty=c(1,1,1), 
+       lwd=c(3,3,3),
+       col=c("red","green","blue"))
+
+# --- Weights at different alleles frequencies --- #
+
+# Default SKAT weights: sharp drop in common variants
+# Strong ~100x decrement in common 5-10-20% : 10-1-0.1
+# Modest ~3x increment in rare 5-1-0.5% : 7-19-21
+dbeta(0.2, 1, 25) # AF=20%
+dbeta(0.125, 1, 25) # AF=12.5%
+dbeta(0.1, 1, 25) # AF=10%
+dbeta(0.05, 1, 25) # AF=5% - typical threshold between common and rare
+dbeta(0.01, 1, 25) # AF=1%
+dbeta(0.005, 1, 25) # AF=0.5% ~ minimal AF in wecare
+
+# Madsen-Browing weights: less decrement in common (5-20%)
+# Modest ~3x decrement in common 5-10-20% : 1.4-1-0.7
+# Modest ~3x increment in rare 5-1-0.5% : 1.5-3-4.5
+dbeta(0.2, 0.5, 0.5) # AF=20%
+dbeta(0.125, 0.5, 0.5) # AF=12.5%
+dbeta(0.1, 0.5, 0.5) # AF=10%
+dbeta(0.05, 0.5, 0.5) # AF=5% - typical threshold between common and rare
+dbeta(0.01, 0.5, 0.5) # AF=1%
+dbeta(0.005, 0.5, 0.5) # AF=0.5% ~ minimal AF in wecare
+
+```
+
+# exploring_logistic_weights
+
+Reasoning for 7%:150stipness logistic threshold: 
+
+1) Default used in SKAT documentation
+
+2) Uses all rare (<5%) + allows common up to ~10% 
+
+3) with gradually reduced weights between 5 and 10%
+
+
+```{r exploring_logistic_weights}
+
+w <- Get_Logistic_Weights_MAF(maf, 0.07, 150)
+plot(maf, w, main="Logistic weights: 0.07-150")
+
+plot(maf[1:150], w[1:150],
+     type="l", lwd=3, col="red", 
+     xlab="AF", ylab="relative weight", 
+     main="Logistic weights with different parameters")
+
+w <- Get_Logistic_Weights_MAF(maf, 0.05, 150)
+lines(maf[1:150], w[1:150], type="l", lwd=3, col="green")
+
+w <- Get_Logistic_Weights_MAF(maf, 0.05, 100)
+lines(maf[1:150], w[1:150], type="l", lwd=3, col="blue")
+
+w <- Get_Logistic_Weights_MAF(maf, 0.025, 150)
+lines(maf[1:150],w[1:150], type="l", lwd=3, col="grey")
+      
+legend("topright", 
+       c("0.07-150",
+         "0.05-150",
+         "0.05-100",
+         "0.025-150"), 
+       lty=c(1,1,1,1), 
+       lwd=c(3,3,3,3),
+       col=c("red","green","blue", "grey"))
+
+```
+
+# exploring_Madsen_Browning_weight
+
+Plots show weights for interval 0:1.
+
+However, only the portion 0:0.5 is relevant for MAF 
+(because AF > 0.5 is not minor any more). 
+
+```{r exploring_Madsen_Browning_weight}
+
+maf <- c(1:150)/150
+w <- 1 / sqrt(maf*(1-maf))
+plot(maf,w, 
+     main="Original Madsen-Browning weight") 
+
+plot(maf, dbeta(maf, 0.5, 0.5), 
+     main="Madsen-Browning weight calculated by beta-distribution\n
+     (note change of Y scale)") 
+
+```
+
+# SKATBinary
+
+SKATBinary is the curently recommended function for using with binary phenotypes (Jul2016).  
+
+
+SKATBinary has convinience methods switches: "SKAT", "Burden" and "SKATO" (method="SKATO" assumes method="optimal.adj" for SKAT).  
+
+
+SKATBinary preserves imputation and default weights as in original SKAT:  
+default impute.method = "bestguess", default weights are beta(1,25)
+
+## SKATBinary has improved algorithms for p-value computation
+It implements new faster algorithms for p-assessment with resampling, adjustment for small number of cases etc. Therefore it does not use/require the resampling calculation during the null model building (as would be used/required by the initial SKAT function).
+
+### method.bin="Hybrid"
+
+This function implements six methods (method.bin) to compute p-values:  
+1) Efficient resampling (ER);  
+2) Quantile adjusted moment matching (QA);  
+3) Moment matching adjustment (MA);  
+4) No adjustment (UA);  
+5) Adaptive ER (ER.A); and  
+6) Hybrid. 
+
+"Hybrid" selects a method based on the total minor allele count (MAC), the number of individuals with minor alleles (m), and the degree of case-control imbalance. 
+
+When method.bin="ER" or "ER.A", SKATBinary compute mid-p-values and minimum achievable mid p-values.
+
+### Two approaches to resampling
+
+Resampling is used to estimate p from empirical data (a sort of clever permutation/bootstrapping that accounts for covariates) instead of estimating p from the analytical models. 
+
+For the "standard" SKAT function it requires resampling to be done at the stage of 
+null model buildiing.  Then it can be retrieved using "p.value.resampling"" etc. 
+
+However, SKATBinary implements it's own resampling, which is not relevant to resampling during the null model building:
+
+SKATBinary uses a recently developed efficient resampling (ER) approach to calculate p-values (manuscript currently under revision), which is a slightly different from traditional resampling methods. N.Resampling parameter in SKATBinary is for ER. If you want to use a traditional resampling approach, you need to use n.Resampling in SKAT_Null_Model. 
+
+https://groups.google.com/forum/#!topic/skat_slee/6Kl5mLRMRgY 
+
+```{r SKATBinary}
+
+# Without adjustment in null model (as supposed)
+
+system.time(
+  skat.reg.null.no.aj <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    Adjustment = FALSE, 
+    out_type="D")
+)
+
+system.time(
+  skat.reg.geno.no.aj.bin <- SKATBinary(
+    gn.s, 
+    skat.reg.null.no.aj, 
+    kernel = "linear.weighted")
+)
+
+skat.reg.geno.no.aj.bin$p.value
+
+# With adjustment in null model (for comparison - just in case ...)
+
+system.time(
+  skat.reg.null.aj <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    out_type="D")
+)
+
+system.time(
+  skat.reg.geno.aj.bin <- SKATBinary(
+    gn.s, 
+    skat.reg.null.aj, 
+    kernel = "linear.weighted")
+)
+
+skat.reg.geno.aj.bin$p.value
+
+```
+
+# SKATBinary_Single
+
+No need in combining anything, so no parameters to set rho and weights?
+
+```{r SKATBinary_Single}
+
+system.time(
+  skat.null.s <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    Adjustment = FALSE, 
+    out_type="D")
+)
+
+snp1.s <- as.vector(gn.s[,1])
+snp5.s <- as.vector(gn.s[,5])
+
+system.time(
+  skat.reg.geno.single <- SKATBinary_Single(
+    snp1.s, 
+    skat.null.s)
+)
+
+skat.reg.geno.single$p.value
+
+skat.reg.geno.single <- SKATBinary_Single(
+  snp5.s, 
+  skat.null.s)
+
+skat.reg.geno.single$p.value
+
+```
+
+# SKAT_CommonRare
+
+This methods attempts to estimate combined effects of common and rare variants:
+
+1) The threshold between common and rare variants is set to ~1-5% (default: 1/ √{2 SampleSize }). It is possible to set the common-rare threshold manually (CommonRare_Cutoff parameter).  
+
+2) Then different weights applied to common and rare (default SKAT to rare and MB to common).  In both cases more frequent variants are underweighted. 
+
+3) Then statistics metric is calculated in a way that variances of rare and common contribute equally (method="C", default). This is done to remove potentially higher input of commons. It is also possible to make and "adaptive" algorithm for selecting relative inputs of common and rare (method="A").  However, simulations showed that such adaptive algorithm somehow reduced power of the test (Ionita-Laza 2013).
+
+4) Selection between burden and SKAT is set through "r.corr" parameters:  
+   SKAT:  r.corr.rare=0 & r.corr.common=0 (default)  
+   burden:  r.corr.rare=1 & r.corr.common=1  
+
+5) It seems that SKAT_CommonRare uses the original SKAT, not the SKATBinary, in the beck-end.  Therefore it uses the old-style adjustment and resampling implementations, as described in the beginning of this tests' summary.  It seems that adjustment is the right way of calculations.  Resampling looks not necessary, as it is very time-consuming, and it produces p-values quite symilar to the analytical estimates anyway. 
+
+```{r SKAT_CommonRare}
+
+# With adjustment, w/o resampling
+
+skat.null.s <- SKAT_Null_Model(
+  ph.s ~ c1.s + c2.s, 
+  out_type="D")
+
+skatcr.test.s <- SKAT_CommonRare(
+  gn.s, 
+  skat.null.s, 
+  method="C", 
+  r.corr.rare=0,
+  r.corr.common=0)
+
+# w/o adjustment, w/o resampling
+skat.null.s.naj <- SKAT_Null_Model(
+  ph.s ~ c1.s + c2.s, 
+  Adjustment=FALSE,
+  out_type="D")
+
+skatcr.test.s.naj <- SKAT_CommonRare(
+  gn.s, 
+  skat.null.s.naj, 
+  r.corr.rare=0,
+  r.corr.common=0)
+
+
+# with adjustment, with resampling
+system.time(
+  skat.null.s.rs <- SKAT_Null_Model(
+    ph.s ~ c1.s + c2.s, 
+    n.Resampling=100000, 
+    out_type="D")
+)
+
+system.time(
+  skatcr.test.s.rs <- SKAT_CommonRare(
+    gn.s, 
+    skat.null.s.rs, 
+    r.corr.rare=0,
+    r.corr.common=0)
+)
+
+# Compare results
+
+skatcr.test.s$p.value
+skatcr.test.s.naj$p.value
+skatcr.test.s.rs$p.value
+
+#Get_Resampling_Pvalue(skatcr.test.s) # error: no resampling was done in null model
+Get_Resampling_Pvalue(skatcr.test.s.rs)
+
+```
+
+# suggested_skat_calls
+
+11 versions of SKAT test settings look equally valid, all of them will be run for comparison:
+
+Burden, SKAT and SKATO with 3 different weights each: default, MB & logistic. 
+SKATRC in burden and SKAT modes
+
+Each will be applied to strict, medium and relaxed datasets.  
+
+If there is a single variant per gene, then SKATBinary_Single will be used.
+
+The example below shows SKAT calculations, which can easily be changed to SKATO and Burden
+
+```{r suggested_skat_calls}
+
+phenotype <- ph.s
+covariates <- cbind(c1.s, c2.s)
+genotypes <- gn.s
+
+skat.null <- SKAT_Null_Model(
+  phenotype ~ covariates, 
+  Adjustment=FALSE,
+  out_type="D")
+
+skat.test.df_wt <- SKATBinary(
+  genotypes, 
+  skat.null, 
+  method="SKAT", # default, to be changed to "Burden" or "SKATO" when necessary
+  weights.beta=c(1,25)) # default
+
+skat.test.mb_wt <- SKATBinary(
+  genotypes, 
+  skat.null, 
+  method="SKAT", # default, to be changed to "Burden" or "SKATO" when necessary
+  weights.beta=c(0.5,0.5))
+
+lw <- Get_Logistic_Weights(
+  genotypes, 0.07, 150)
+
+skat.test.lw_wt <- SKATBinary(
+  genotypes, 
+  skat.null, 
+  method="SKAT", # default, to be changed to "Burden" or "SKATO" when necessary
+  weights=lw)
+
+# Compare outputs (see more outputs later)
+skat.test.df_wt$p.value
+skat.test.mb_wt$p.value
+skat.test.lw_wt$p.value
+
+# Some default settings implied in each call:
+# kernel = "linear.weighted"
+# N.Resampling=2 *10^6
+# missing_cutoff=0.15
+# impute.method = "bestguess"
+# method.bin="Hybrid"
+
+```
+
+# suggested_SKAT_CommonRare_calls
+
+- with adjustment 
+
+- w/o resampling 
+
+- using default weights for rare [ beta(1,25) ] and common [ beta(0.5, 0.5) ]
+
+- doing two tests: for burden and skat methods
+
+```{r suggested_SKAT_CommonRare_calls}
+
+phenotype <- ph.s
+covariates <- cbind(c1.s, c2.s)
+genotypes <- gn.s
+
+skat.null <- SKAT_Null_Model(
+  phenotype ~ covariates, 
+  out_type="D")
+
+cr.test.skat <- SKAT_CommonRare(
+  genotypes, 
+  skat.null, 
+  r.corr.rare=0, 
+  r.corr.common=0)
+
+cr.test.burden <- SKAT_CommonRare(
+  genotypes, 
+  skat.null, 
+  r.corr.rare=1, 
+  r.corr.common=1)
+
+# Compare outputs (see more outputs later)
+cr.test.skat$p.value
+cr.test.burden$p.value
+
+#cr.test.skat
+#cr.test.burden
+
+# Some default settings implied in each call:
+# method="C" - equla contribution of rare and common variances
+# kernel = "linear.weighted"
+# etc
+
+```
+
+# suggested_SKATBinary_Single_calls
+
+No need in combining anything, so no parameters to set rho and weights?
+
+```{r suggested_SKATBinary_Single_calls}
+
+phenotype <- ph.s
+covariates <- cbind(c1.s, c2.s)
+genotypes <- gn.s
+
+skat.null <- SKAT_Null_Model(
+  phenotype ~ covariates, 
+  Adjustment = FALSE, 
+  out_type="D")
+
+variant1 <- as.vector(genotypes[,1])
+variant2 <- as.vector(genotypes[,5])
+
+skat.test.single.var1 <- SKATBinary_Single(
+  variant1, skat.null)
+
+skat.test.single.var2 <- SKATBinary_Single(
+  variant2, skat.null)
+
+skat.test.single.var1$p.value
+skat.test.single.var2$p.value
+
+#skat.test.single.var2
+
+```
+
+# Other notes
+
+## FWER correction for p-value
+There is an option of p-value correction, called Family-Wide:  
+Resampling_FWER(skat.geno.s)  
+It can not be used in wecare because it only implements in SKAT.SSD context.
+
+## SKAT_ChrX
+Allows special processing of X-chr variants depending on gender.  
+Not needed for wecare because this dataset is of female gender only. 
+
+## Outputs
+See "value" for skat test objects to pick what to report: done in a separate file
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```

@@ -1,0 +1,1097 @@
+---
+title: "SKAT_calls_and_outputs"
+author: "AL"
+date: "July 22, 2016"
+output: html_document
+---
+
+# Summary
+
+Test SKAT functions for wecare dataset.  
+
+# start_section
+
+```{r start_section}
+
+Sys.time()
+
+rm(list=ls())
+graphics.off()
+
+library(knitr)
+opts_knit$set(root.dir = "/scratch/medgen/scripts/rscripts_05.16")
+#setwd("/scratch/medgen/scripts/rscripts_05.16")
+
+library(SKAT)
+
+```
+
+http://stackoverflow.com/questions/3903157/how-can-i-check-whether-a-function-call-results-in-a-warning 
+
+```{r}
+
+x <- function(i){
+  if (i < 10) warning("A warning")
+  i
+}
+
+
+
+tryCatch(x(15), error=function(e) e, warning=function(w) w)
+
+tryCatch(x(5), error=function(e) e, warning=function(w) w)
+
+tryCatch(x(5), warning=function(w) w)
+
+tryCatch(x(5), warning=function(w) x(5))
+
+
+
+tt <- tryCatch(x(15), error=function(e) e, warning=function(w) w)
+
+tt2 <- tryCatch(x(5), error=function(e) e, warning=function(w) w)
+
+tt
+## <simpleWarning in x(5): A warning>
+
+tt2
+## [1] 15
+
+if(is(tt,"warning")) print("KOOKOO")
+## [1] "KOOKOO"
+
+if(is(tt2,"warning")) print("KOOKOO")
+
+
+
+tryCatch( x(5), warning=function(w)
+  return(list(x(5),w)) )
+
+
+```
+
+
+# load_skat_example_data
+
+200 cases x 67 variants, no missed annotations and genotypes
+
+```{r load_library_and_test_data}
+
+data(SKAT.example)
+attach(SKAT.example)
+
+# Get necessary data out of the SKAT.example
+ph <- y.b # phenotype: 2000 cases
+gn <- Z # genotype: 2000 cases (rows) x 67 SNPs (columns)
+c1 <- X[,1] # covariate 1: 2000 cases
+c2 <- X[,2] # covariate 2: 2000 cases
+
+# Remove SKAT.example
+detach(SKAT.example)
+
+# Get a subset of data for 200 cases only
+phenotypes.skat <- ph[c(1:100,1001:1100)]
+genotypes.skat <- gn[c(1:100,1001:1100),]
+c1.s <- c1[c(1:100,1001:1100)] # covariate 1
+c2.s <- c2[c(1:100,1001:1100)] # covariate 2
+covariates.skat <- cbind(c1.s, c2.s)
+
+rm(SKAT.example, ph, gn, c1, c2, c1.s, c2.s)
+
+```
+
+# generate_bad_or_uniform_dataset
+
+100 cases x 6 varianrs, all are bad or uniform
+
+```{r generate_bad_or_uniform_dataset}
+
+c1 <- as.numeric(runif(100)>0.5)
+NA -> c1[runif(100) > 0.90]
+
+c2 <- 100*runif(100)
+NA -> c2[runif(100) > 0.90]
+
+covariates.unif <- cbind(c1,c2)
+
+g <- rep(0,500)
+NA -> g[ runif(500)>0.9 ]
+
+genotypes.unif <- matrix(g, ncol=5)
+
+bad.variant <- as.numeric(runif(100) > 0.95)
+NA -> bad.variant[runif(100) > 0.5]
+
+genotypes.unif <- cbind(bad.variant, genotypes.unif)
+
+phenotypes.unif <- as.numeric(runif(100)>0.5)
+
+rm(c1,c2,g, bad_variant)
+
+```
+
+# generate_one_good_dataset
+
+100 cases x 8 varianrs, all except one variants are bad or uniform
+
+```{r generate_one_good_dataset}
+
+c1 <- as.numeric(runif(100)>0.5)
+NA -> c1[runif(100) > 0.90]
+
+c2 <- 100*runif(100)
+NA -> c2[runif(100) > 0.90]
+
+covariates.one <- cbind(c1,c2)
+
+g <- rep(0,500)
+NA -> g[ runif(500)>0.9 ]
+
+genotypes.one <- matrix(g, ncol=5)
+
+bad.variant <- as.numeric(runif(100) > 0.95)
+NA -> bad.variant[runif(100) > 0.5]
+
+good.variant <- as.numeric(runif(100) > 0.95)
+NA -> good.variant[runif(100) > 0.9]
+
+genotypes.one <- cbind(good.variant, bad.variant, genotypes.unif)
+
+phenotypes.one <- as.numeric(runif(100)>0.5)
+
+rm(c1,c2,g,bad.variant,good.variant)
+
+```
+
+# generate_random_dataset
+
+100 cases x 5 varianrs, ~5% AF, ~10% missed annotations and genotypes
+
+```{r generate_random_dataset}
+
+c1 <- as.numeric(runif(100)>0.5)
+NA -> c1[runif(100) > 0.90]
+
+c2 <- 100*runif(100)
+NA -> c2[runif(100) > 0.90]
+
+covariates.rand <- cbind(c1,c2)
+
+a <- as.numeric(runif(500) > 0.96) # for heterozigous
+b <- as.numeric(runif(500) > 0.99) # for homozigous
+c <- runif(500) > 0.90 # for missed genotypes
+d <- a+b
+NA -> d[c]
+genotypes.rand <- matrix(d, ncol=5)
+
+phenotypes.rand <- as.numeric(runif(100)>0.5)
+
+rm(a,b,c,c1,c2,d)
+
+```
+
+# generate_biased_dataset
+
+100 cases x 7 varianrs, ~5% AF, ~10% missed annotations and genotypes, 
+1 uniform variant and 1 bad variant with high NA rate
+
+```{r generate_biased_dataset}
+
+# Generate random phenotypes
+phenotypes.bias <- as.numeric(runif(100)>0.5)
+
+# Generate two random covariates (binary and quantitative)
+c1 <- as.numeric(runif(100)>0.5)
+NA -> c1[runif(100) > 0.90]
+c2 <- 100*runif(100)
+NA -> c2[runif(100) > 0.90]
+covariates.bias <- cbind(c1,c2)
+
+# Generate random genotypes
+a <- as.numeric(runif(500) > 0.96) # for heterozigous
+b <- as.numeric(runif(500) > 0.99) # for homozigous
+c <- runif(500) > 0.90 # for missed genotypes
+d <- a + b
+NA -> d[ c ]
+genotypes.bias <- matrix(d, ncol=5)
+
+# Introduce bias
+biased.cases <- runif(100) > 0.5 & phenotypes.bias == 1
+biased.variants <- runif(5) > 0.5
+1 -> genotypes.bias[biased.cases, biased.variants]
+
+biased.controls <- runif(100) > 0.5 & phenotypes.bias == 0
+biased.variants <- runif(3) > 0.5
+0 -> genotypes.bias[biased.controls, biased.variants]
+
+# Add uniform and bad variants
+uniform.variant <- rep(0,100)
+NA -> uniform.variant[runif(100) > 0.9]
+
+bad.variant <- as.numeric(runif(100) > 0.95)
+NA -> bad.variant[runif(100) > 0.5]
+
+genotypes.bias <- cbind(uniform.variant, bad.variant, genotypes.bias)
+
+rm(a,b,c,c1,c2,d,biased.cases, biased.controls, biased.variants, bad.variant,uniform.variant)
+
+```
+
+# function_to_run_tests_for_multiple_variants
+
+```{r function_to_run_tests_for_multiple_variants}
+
+# for debugging
+#set.name <- "unif"
+#phenotypes <- phenotypes.unif
+#covariates <- covariates.unif
+#genotypes <- genotypes.unif
+
+run_tests_for_multiple_variants <- function(set.name, phenotypes, covariates, genotypes){
+  
+  # Calculate logistic weights
+  if( sum(genotypes, na.rm=TRUE) > 0 ){
+    lw <- Get_Logistic_Weights(genotypes, 0.07, 150)
+  }else{
+    # Get_Logistic_Weights generates error in case of uniform genotypes
+    lw <- rep(1,ncol(genotypes))
+  }
+  
+  # Calculate null-model
+  # Keep adjustment = TRUE because it will be used bu SKAT_RareCommon
+  skat.null <- SKAT_Null_Model(
+    phenotypes ~ covariates, 
+    out_type="D")
+  
+  # Run Burden tests
+  
+  burden.test.df_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="Burden", 
+    weights.beta=c(1,25)) # default
+  
+  burden.test.mb_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="Burden", 
+    weights.beta=c(0.5,0.5))
+  
+  burden.test.lw_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="Burden", 
+    weights=lw)
+  
+  # Run SKAT tests
+  
+  skat.test.df_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="SKAT", 
+    weights.beta=c(1,25)) # default
+  
+  skat.test.mb_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="SKAT", 
+    weights.beta=c(0.5,0.5))
+  
+  skat.test.lw_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="SKAT", 
+    weights=lw)
+
+  # Run SKATO tests
+  
+  skato.test.df_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="SKATO", 
+    weights.beta=c(1,25)) # default
+  
+  skato.test.mb_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="SKATO", 
+    weights.beta=c(0.5,0.5))
+  
+  skato.test.lw_wt <- SKATBinary(
+    genotypes, 
+    skat.null, 
+    method="SKATO", 
+    weights=lw)
+  
+  # Run SKAT_CommonRare tests
+  
+  cr.test.skat <- SKAT_CommonRare(
+    genotypes, 
+    skat.null, 
+    r.corr.rare=0, 
+    r.corr.common=0)
+  
+  cr.test.burden <- SKAT_CommonRare(
+    genotypes, 
+    skat.null, 
+    r.corr.rare=1, 
+    r.corr.common=1)
+  
+  # Compile results list
+  
+  result <- list(
+    set.name, 
+    phenotypes, 
+    covariates, 
+    genotypes, 
+    skat.null, 
+    burden.test.df_wt,
+    burden.test.mb_wt,
+    burden.test.lw_wt,
+    skat.test.df_wt,
+    skat.test.mb_wt,
+    skat.test.lw_wt,
+    skato.test.df_wt,
+    skato.test.mb_wt,
+    skato.test.lw_wt,
+    cr.test.skat,
+    cr.test.burden)
+  
+  names(result) <- c(
+    "set.name", 
+    "phenotypes", 
+    "covariates", 
+    "genotypes", 
+    "skat.null",
+    "burden.skatw",
+    "burden.mbw",
+    "burden.lw",
+    "skat.skatw",
+    "skat.mbw",
+    "skat.lw",
+    "skato.skatw",
+    "skato.mbw",
+    "skato.lw",
+    "cr.skat",
+    "cr.burden")
+
+  # Return result
+  return(result)
+  
+}
+
+```
+
+# function_to_prepare_tables_for_results
+
+Makes empty tables with headers only. 
+Deletes previously existing files, if any. 
+
+```{r function_to_prepare_tables_for_results}
+
+prepare_tables_for_results <- function(prefix, report_type = "summary_only", path=""){
+
+  # Prepare headers
+  summary_table_header <- c("set", "n_cases_init", "n_vars_init", 
+    "missed_genotypes_fraction_init", "n_cases_retained", "n_vars_retained", "n_vars_retained_cr", 
+    "burden_skatw", "burden_mbw", "burden_lw", "skat_skatw", "skat_mbw", "skat_lw", 
+    "skato_skatw", "skato_mbw", "skato_lw", "cr_skat",  "cr_burden", "min_p")
+  
+  details_table_header <- c("set", "n_cases_init", "n_vars_init", 
+    "missed_genotypes_fraction_init", "n_cases_retained", 
+    "p_val", "n_vars_total", "n_vars_tested", 
+    "ma_count", "n_cases_with_ma", "method_for_p_assessment",
+    "rare_vars_tested", "common_vars_tested", "cutoff")
+  
+  # Write header to summary table
+  write(paste(summary_table_header, sep="", collapse="\t"),
+    file=paste(path, prefix, "_summary.txt", sep="", collapse=""))
+
+  # Write headers to other tables, if required
+  if(report_type == "full"){
+    
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_skatw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_mbw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_lw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_skatw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_mbw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_lw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_skatw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_mbw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_lw.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_cr_skat.txt", sep="", collapse=""))
+
+    write(paste(details_table_header, sep="", collapse="\t"),
+      file=paste(path, prefix, "_cr_burden.txt", sep="", collapse=""))
+
+    }
+}
+
+```
+
+# functions_to_check_existance_of_fields_in_skat_output
+
+SKAT functions may choose different algorithms and output fields depending on data. 
+This function is used to avoid errors if some fields do not exist. 
+If the field does not exist, the function outputs NA instead of error.
+It works well with skat output objects in required contect. 
+It is not intended and it may not work with other objects or context. 
+In particular, it does not work with atomic input objects. 
+
+```{r function_to_check_existance_of_fields_in_skat_output}
+
+nm <- function(x){if(is.numeric(x)){x}else{NA}}
+ch <- function(x){if(is.character(x)){x}else{NA}}
+
+```
+
+# function_to_extract_p_values_from_skat_test_object
+
+```{r function_to_extract_p_values_from_skat_test_object}
+
+get_p_values <- function(x){
+
+  #summary_table_header <- c("set", "n_cases_init", "n_vars_init", 
+  #  "missed_genotypes_fraction_init", "n_cases_retained", "n_vars_retained", "n_vars_retained_cr", 
+  #  "burden_skatw", "burden_mbw", "burden_lw", "skat_skatw", "skat_mbw", "skat_lw", 
+  #  "skato_skatw", "skato_mbw", "skato_lw", "cr_skat",  "cr_burden", "min_p")
+
+  c(nm(x$burden.skatw$p.value), # burden_skatw
+    nm(x$burden.mbw$p.value), # burden_mbw
+    nm(x$burden.lw$p.value), # burden_lw
+    nm(x$skat.skatw$p.value), # skat_skatw
+    nm(x$skat.mbw$p.value), # skat_mbw
+    nm(x$skat.lw$p.value), # skat_lw
+    nm(x$skato.skatw$p.value), # skato_skatw
+    nm(x$skato.mbw$p.value), # skato_mbw
+    nm(x$skato.lw$p.value), # skato_lw
+    nm(x$cr.skat$p.value), # cr_skat
+    nm(x$cr.burden$p.value)) # cr_burden
+
+}
+
+```
+
+# function_to_extract_detailes_from_skat_test_object
+
+```{r function_to_extract_detailes_from_skat_test_object}
+
+get_details <- function(x){
+
+  #details_table_header <- c("set", "n_cases_init", "n_vars_init", 
+  #  "missed_genotypes_fraction_init", "n_cases_retained", 
+  #  "p_val", "n_vars_total", "n_vars_tested", 
+  #  "ma_count", "n_cases_with_ma", "method_for_p_assessment",
+  #  "rare_vars_tested", "common_vars_tested", "cutoff")
+
+  c(nm(x$p.value), # p_val
+    nm(x$param$n.marker), # n_vars_total
+    nm(x$param$n.marker.test), # n_vars_tested
+    nm(x$MAC), # ma_count
+    nm(x$m), # n_cases_with_ma
+    ch(x$method.bin), # method_for_p_assessment
+    nm(x$n.rare), # rare_vars_tested
+    nm(x$n.common), # common_vars_tested
+    nm(x$Cutoff)) # common_vars_tested
+
+}
+
+```
+
+# function_to_print_results_for_multiple_variants
+
+```{r function_to_print_results_for_multiple_variants}
+
+print_results_for_multiple_variants <- function(
+  data, prefix, report_type = "summary_only", path=""){
+  
+  # Set name
+  set <- data$set.name
+
+  # Total num of variants and fraction of missed genotypes
+  n_cases_init <- nrow(data$genotypes)
+  n_vars_init <- ncol(data$genotypes)
+  missed_genotypes_fraction_init <- sum(is.na(data$genotypes)) / (n_cases_init * n_vars_init)
+  
+  # Num of retained cases
+  n_cases_retained <- length(data$skat.null$re1$id_include)
+  
+  # Num of retained variants
+  n_vars_retained <- nm(data$burden.skatw$param$n.marker.test)
+  
+  if (n_vars_retained != data$burden.mbw$param$n.marker.test | 
+      n_vars_retained != data$burden.lw$param$n.marker.test | 
+      n_vars_retained != data$skat.skatw$param$n.marker.test | 
+      n_vars_retained != data$skat.mbw$param$n.marker.test | 
+      n_vars_retained != data$skat.lw$param$n.marker.test | 
+      n_vars_retained != data$skato.skatw$param$n.marker.test | 
+      n_vars_retained != data$skato.mbw$param$n.marker.test | 
+      n_vars_retained != data$skato.lw$param$n.marker.test){
+    NA -> n_vars_retained
+  }
+  
+  # Num of retained variants in cr tests
+  n_vars_retained_cr <- nm(data$cr.skat$param$n.marker.test)
+  
+  if (n_vars_retained_cr != data$cr.burden$param$n.marker.test){
+    NA -> n_vars_retained_cr
+  }
+  
+  # p-values
+  p_values <- get_p_values(data)
+  min_p <- min(p_values, na.rm=TRUE)
+  
+  #summary_table_header <- c("set", "n_cases_init", "n_vars_init", 
+  #  "missed_genotypes_fraction_init", "n_cases_retained", "n_vars_retained", "n_vars_retained_cr", 
+  #  "burden_skatw", "burden_mbw", "burden_lw", "skat_skatw", "skat_mbw", "skat_lw", 
+  #  "skato_skatw", "skato_mbw", "skato_lw", "cr_skat",  "cr_burden", "min_p")
+
+  # Compile data for summary table 
+  # NB: should be consistent with the header!!!
+  summary <- c(set, n_cases_init, n_vars_init, 
+    missed_genotypes_fraction_init, n_cases_retained, 
+    n_vars_retained, n_vars_retained_cr, p_values, min_p)
+  
+  # Write data to summary table
+  write(paste(summary, sep="", collapse="\t"),
+    file=paste(path, prefix, "_summary.txt", sep="", collapse=""),
+    append = TRUE)
+
+  # Write data to other tables, if required
+  if (report_type == "full") {
+    
+    # Compile data
+
+    #details_table_header <- c("set", "n_cases_init", "n_vars_init", 
+    #  "missed_genotypes_fraction_init", "n_cases_retained", 
+    #  "p_val", "n_vars_total", "n_vars_tested", 
+    #  "ma_count", "n_cases_with_ma", "method_for_p_assessment",
+    #  "rare_vars_tested", "common_vars_tested", "cutoff")
+    
+    initial_fields <- c(set, n_cases_init, n_vars_init, 
+                        missed_genotypes_fraction_init, 
+                        n_cases_retained)
+    
+    burden_skatw <- get_details(data$burden.skatw)
+    burden_skatw <- c(initial_fields, burden_skatw)
+    
+    burden_mbw <- get_details(data$burden.mbw)
+    burden_mbw <- c(initial_fields, burden_mbw)
+    
+    burden_lw <- get_details(data$burden.lw)
+    burden_lw <- c(initial_fields, burden_lw)
+    
+    skat_skatw <- get_details(data$skat.skatw)
+    skat_skatw <- c(initial_fields, skat_skatw)
+    
+    skat_mbw <- get_details(data$skat.mbw)
+    skat_mbw <- c(initial_fields, skat_mbw)
+    
+    skat_lw <- get_details(data$skat.lw)
+    skat_lw <- c(initial_fields, skat_lw)
+    
+    skato_skatw <- get_details(data$skato.skatw)
+    skato_skatw <- c(initial_fields, skato_skatw)
+    
+    skato_mbw <- get_details(data$skato.mbw)
+    skato_mbw <- c(initial_fields, skato_mbw)
+    
+    skato_lw <- get_details(data$skato.lw)
+    skato_lw <- c(initial_fields, skato_lw)
+    
+    cr_skat <- get_details(data$cr.skat)
+    cr_skat <- c(initial_fields, cr_skat) 
+    
+    cr_burden <- get_details(data$cr.burden)
+    cr_burden <- c(initial_fields, cr_burden)
+    
+    # Write data to files
+    
+    write(paste(burden_skatw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_skatw.txt", sep="", collapse=""),
+      append = TRUE)
+
+    write(paste(burden_mbw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_mbw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(burden_lw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_lw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(skat_skatw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_skatw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(skat_mbw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_mbw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(skat_lw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_lw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(skato_skatw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_skatw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(skato_mbw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_mbw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(skato_lw, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_lw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(cr_skat, sep="", collapse="\t"),
+      file=paste(path, prefix, "_cr_skat.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(cr_burden, sep="", collapse="\t"),
+      file=paste(path, prefix, "_cr_burden.txt", sep="", collapse=""),
+      append = TRUE)
+
+  }
+}
+  
+```
+
+# function_to_run_SKATBinary_Single
+
+SKATBinary_Single behaves slightly different from SKATBinary.  
+
+In particular:
+
+- it does not support missing_cutoff option 
+(which is defaulting to 0.15 in SKATBinary) and 
+
+- it requires explicit handling of cases with missed 
+covariates before calculating the null model
+
+```{r function_to_run_SKATBinary_Single}
+
+# For debugging:
+#set.name <- "test"
+#phenotypes <- phenotypes.bias
+#covariates <- covariates.bias
+#variant <- genotypes.bias[,2]
+
+run_single_variant_test <- function(set.name, phenotypes, covariates, variant){
+
+  # Initial num of cases and fraction of missed genotypes
+  n_cases_init <- length(variant)
+  missed_genotypes_fraction_init <- sum(is.na(variant)) / n_cases_init
+  
+  # In some tests SKATBinary_Single generated errors 
+  # when there were cases with incomplete data on covariates
+  incomplete.covariates <- is.na(apply(covariates,1,sum))
+
+  phenotypes <- phenotypes[!incomplete.covariates]
+  covariates <- covariates[!incomplete.covariates,]
+  variant <- variant[!incomplete.covariates]
+
+  # Num of retained cases
+  n_cases_retained <- sum(!incomplete.covariates)
+  
+  # Calculate null model
+  skat.null <- SKAT_Null_Model(
+    phenotypes ~ covariates, 
+    Adjustment = FALSE, 
+    out_type="D")
+  
+  # Calculate test
+  skat.test <- SKATBinary_Single(
+    variant, skat.null)
+  
+  # Compile result
+  result <- list(
+    set.name, 
+    phenotypes, 
+    covariates, 
+    variant, 
+    n_cases_init, 
+    missed_genotypes_fraction_init, 
+    n_cases_retained, 
+    skat.null, 
+    skat.test)
+  
+  names(result) <- c(
+    "set.name", 
+    "phenotypes", 
+    "covariates", 
+    "variant", 
+    "n_cases_init",
+    "missed_genotypes_fraction_init",
+    "n_cases_retained",
+    "skat.null",
+    "single.variant.test")
+
+  # Return result
+  return(result)
+  
+}
+
+```
+
+# function_to_print_results_for_single_variant
+
+```{r function_to_print_results_for_single_variant}
+
+# Debug
+#data <- bias.var1
+#prefix <- "test"
+#path <- "tmp/"
+#report_type <- "full"
+
+print_results_for_single_variant <- function(
+  data, prefix, report_type = "summary_only", path=""){
+  
+  # Set name
+  set <- data$set.name
+  
+  # Nums of initial variants, cases and fraction of missed genotypes
+  n_cases_init <- data$n_cases_init
+  n_vars_init <- 1
+  missed_genotypes_fraction_init <- data$missed_genotypes_fraction_init
+  
+  # Num of retained cases
+  n_cases_retained <- data$n_cases_retained
+  
+  # p-values
+  p_value <- nm(data$single.variant.test$p.value)
+  n_vars_tested <- nm(data$single.variant.test$param$n.marker)
+
+  #summary_table_header <- c("set", "n_cases_init", "n_vars_init", 
+  #  "missed_genotypes_fraction_init", "n_cases_retained", "n_vars_retained", "n_vars_retained_cr", 
+  #  "burden_skatw", "burden_mbw", "burden_lw", "skat_skatw", "skat_mbw", "skat_lw", 
+  #  "skato_skatw", "skato_mbw", "skato_lw", "cr_skat",  "cr_burden", "min_p")
+
+  # Compile data for summary table 
+  # NB: same p-value written to each test, as there is no need in aggregation,
+  # so there should be no differences between the tests
+  summary <- c(set, n_cases_init, n_vars_init, 
+    missed_genotypes_fraction_init, 
+    n_cases_retained, n_vars_tested, n_vars_tested, 
+    p_value, p_value, p_value, 
+    p_value, p_value, p_value, 
+    p_value, p_value, p_value,
+    p_value, p_value, p_value)
+  
+  # Write data to summary table
+  write(paste(summary, sep="", collapse="\t"),
+    file=paste(path, prefix, "_summary.txt", sep="", collapse=""),
+    append = TRUE)
+
+  # Write data to other tables, if required
+  if (report_type == "full") {
+
+    #details_table_header <- c("set", "n_cases_init", "n_vars_init", 
+    #  "missed_genotypes_fraction_init", "n_cases_retained", 
+    #  "p_val", "n_vars_total", "n_vars_tested", 
+    #  "ma_count", "n_cases_with_ma", "method_for_p_assessment",
+    #  "rare_vars_tested", "common_vars_tested", "cutoff")
+
+    # Compile data
+    details <- get_details(data$single.variant.test)
+    single_variant_test <- c(set, n_cases_init, n_vars_init, 
+                        missed_genotypes_fraction_init, 
+                        n_cases_retained, details)
+
+    # Write data to files
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_skatw.txt", sep="", collapse=""),
+      append = TRUE)
+
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_mbw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_burden_lw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_skatw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_mbw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skat_lw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_skatw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_mbw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_skato_lw.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_cr_skat.txt", sep="", collapse=""),
+      append = TRUE)
+    
+    write(paste(single_variant_test, sep="", collapse="\t"),
+      file=paste(path, prefix, "_cr_burden.txt", sep="", collapse=""),
+      append = TRUE)
+
+  }
+}
+
+```
+
+# prepare_tables_for_results
+
+```{r prepare_tables_for_results}
+
+prepare_tables_for_results("test", report_type = "full", path="tmp/")
+
+```
+
+# run_skat_dataset
+
+```{r run_skat_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.skat
+covariates <- covariates.skat
+genotypes <- genotypes.skat
+
+# Run tests
+system.time(
+  skat.test <- run_tests_for_multiple_variants("skat", phenotypes, covariates, genotypes)
+)
+
+# Write results
+print_results_for_multiple_variants(
+  skat.test, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, genotypes)
+
+```
+
+# run_bad_or_uniform_dataset
+
+```{r run_bad_or_uniform_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.unif
+covariates <- covariates.unif
+genotypes <- genotypes.unif
+
+# Run tests
+system.time(
+  uniform.test <- run_tests_for_multiple_variants("uniform", phenotypes, covariates, genotypes)
+)
+
+# Write results
+print_results_for_multiple_variants(
+  uniform.test, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, genotypes)
+
+```
+
+# run_single_good_dataset
+
+```{r run_single_good_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.one
+covariates <- covariates.one
+genotypes <- genotypes.one
+
+# Run tests
+system.time(
+  one.test <- run_tests_for_multiple_variants("one", phenotypes, covariates, genotypes)
+)
+
+# Write results
+print_results_for_multiple_variants(
+  one.test, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, genotypes)
+
+```
+
+# run_rand_dataset
+
+```{r run_rand_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.rand
+covariates <- covariates.rand
+genotypes <- genotypes.rand
+
+# Run tests
+system.time(
+  rand.test <- run_tests_for_multiple_variants("rand", phenotypes, covariates, genotypes)
+)
+
+# Write results
+print_results_for_multiple_variants(
+  rand.test, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, genotypes)
+
+```
+
+# run_bias_dataset
+
+```{r run_bias_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.bias
+covariates <- covariates.bias
+genotypes <- genotypes.bias
+
+# Run tests
+system.time(
+  bias.test <- run_tests_for_multiple_variants("bias", phenotypes, covariates, genotypes)
+)
+
+# Write results
+print_results_for_multiple_variants(
+  bias.test, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, genotypes)
+
+```
+
+# run_single_var1_from_bias_dataset
+
+```{r run_single_var1_from_bias_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.bias
+covariates <- covariates.bias
+variant <- as.vector(genotypes.bias[,1])
+
+# Run test
+system.time(
+  bias.var1 <- run_single_variant_test("bias_var1", phenotypes, covariates, variant)
+)
+
+# Write results
+print_results_for_single_variant(
+  bias.var1, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, variant)
+
+```
+
+# run_single_var2_from_bias_dataset
+
+```{r run_single_var2_from_bias_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.bias
+covariates <- covariates.bias
+variant <- as.vector(genotypes.bias[,2])
+
+# Run test
+system.time(
+  bias.var2 <- run_single_variant_test("bias_var2", phenotypes, covariates, variant)
+)
+
+# Write results
+print_results_for_single_variant(
+  bias.var2, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, variant)
+
+```
+
+# run_single_var3_from_bias_dataset
+
+```{r run_single_var3_from_bias_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.bias
+covariates <- covariates.bias
+variant <- as.vector(genotypes.bias[,3])
+
+# Run test
+system.time(
+  bias.var3 <- run_single_variant_test("bias_var3", phenotypes, covariates, variant)
+)
+
+# Write results
+print_results_for_single_variant(
+  bias.var3, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, variant)
+
+```
+
+# run_single_variant_from_rand_dataset
+
+```{r run_single_variants_from_rand_dataset}
+
+# Prepare dataset
+phenotypes <- phenotypes.rand
+covariates <- covariates.rand
+variant <- as.vector(genotypes.rand[,1])
+
+# Run test
+system.time(
+  rand.var1 <- run_single_variant_test("rand_var1", phenotypes, covariates, variant)
+)
+
+# Write results
+print_results_for_single_variant(
+  rand.var1, "test", report_type = "full", path="tmp/")
+
+# Clean-up
+rm(phenotypes, covariates, variant)
+
+```
+
+# Other possible outputs
+
+Make QQplots ??
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```
+

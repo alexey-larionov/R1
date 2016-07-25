@@ -2,22 +2,26 @@
 
 # run_rmd.sh
 # Run rmarkdown script in batch mode
-# Alexey Larionov, 15Mar2016
+# Alexey Larionov, 24Jul2016
 # Use: sbatch run.rmd rmd_script
 
 # ---------------------------------------- #
 #           sbatch instructions            #
 # ---------------------------------------- #
 
-#SBATCH -J run_rmd
-#SBATCH --time=01:00:00
+#SBATCH -J wc_07
+#SBATCH --output wc_07.log
+#SBATCH --time=20:00:00
 #SBATCH -A TISCHKOWITZ-SL2
 #SBATCH --nodes=1
 #SBATCH --exclusive
 #SBATCH --mail-type=ALL
 #SBATCH --no-requeue
 #SBATCH -p sandybridge
-#SBATCH --qos=INTR
+##SBATCH --qos=INTR
+
+# Stop on errors
+set -e
 
 # Modules section (required, do not remove)
 . /etc/profile.d/modules.sh
@@ -32,6 +36,7 @@ module load pandoc/1.15.2.1
 cd "${SLURM_SUBMIT_DIR}"
 
 # Report settings
+echo "Job id: ${SLURM_JOB_ID}"
 echo "Job name: ${SLURM_JOB_NAME}"
 echo "Allocated node: $(hostname)"
 echo "Initial working folder:"
@@ -39,6 +44,7 @@ echo "${SLURM_SUBMIT_DIR}"
 echo ""
 echo " ------------------ Output ------------------ "
 echo ""
+echo "Started: $(date +%d%b%Y_%H:%M:%S)"
 
 # Files and folders
 root_folder="/scratch/medgen/scripts/rscripts_05.16"
@@ -64,4 +70,4 @@ r_expressions="
 /scratch/medgen/tools/r/R-3.2.2/bin/R "${r_expressions}"
 
 # Completion message
-echo "Script completed"
+echo "Completed: $(date +%d%b%Y_%H:%M:%S)""

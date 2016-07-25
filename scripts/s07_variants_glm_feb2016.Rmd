@@ -91,7 +91,7 @@ eigen2 <- phenotypes.df$Eigen_2
 eigen3 <- phenotypes.df$Eigen_3
 
 # Add header to the output table
-variants_assoc.mx.chr <- c("Variant", "N_cases", "Effect", "SE", "P_Wald", "P_LRT", "P_Score")
+variants_assoc.mx.chr <- c("Variant", "N_Cases", "Alt_Alleles_Count", "Effect", "SE", "P_Wald", "P_LRT", "P_Score")
 
 # For each variant (takes ~5min for ~20k variants x ~ 400 cases)
 for ( variant in rownames(genotypes.mx) ) {
@@ -121,6 +121,7 @@ for ( variant in rownames(genotypes.mx) ) {
   #str(glm.geno$model)
   cases.included <- nrow(glm.geno$model)
   genotypes.in.model <- glm.geno$model$genotype
+  alt.alleles.count <- sum(genotypes.in.model)
   
   # Calculate null-model w/o genotype
   glm.null <- glm(phenotype ~ +
@@ -137,7 +138,7 @@ for ( variant in rownames(genotypes.mx) ) {
     subset=!is.na(genotype),
     family = binomial(link = "logit"))
 
-  #summary(glm.null)
+  summary(glm.null)
   #dim(glm.null$model)
   #str(glm.null$model)
   
@@ -163,6 +164,7 @@ for ( variant in rownames(genotypes.mx) ) {
 	# Summarise and format results
   results <- c(variant, 
         cases.included, 
+        alt.alleles.count, 
         round(Effect,3), 
         round(SE, 3), 
         format(P.Wald, scientific=T, digits=3), 
@@ -181,10 +183,8 @@ rm(phenotype, genotype,
    num_preg, 
    eigen1, eigen2, eigen3)
 
-rm(variant, 
-   cases.included, genotypes.in.model, 
-   Effect, SE, P.Wald, P.LRT, P.Score, 
-   chi.stat.LRT, Score.Z, results, 
+rm(variant, cases.included, genotypes.in.model, alt.alleles.count, 
+   Effect, SE, P.Wald, P.LRT, P.Score, chi.stat.LRT, Score.Z, results, 
    glm.geno, glm.null)
 
 ```
@@ -214,10 +214,72 @@ rownames(variants_assoc.mx) <- rownames(variants_assoc.mx.chr)
 
 NA -> variants_assoc.mx[is.nan(variants_assoc.mx)]
 
+# Convert mx to df
+variants_assoc.df <- as.data.frame(variants_assoc.mx)
+variants_assoc.df <- cbind(rownames(variants_assoc.df), variants_assoc.df)
+"VarID" -> colnames(variants_assoc.df)[1]
+
 # Clean-up
-rm(variants_assoc.mx.chr)
+rm(variants_assoc.mx.chr, variants_assoc.mx)
 
 ```
+
+# explore_results
+
+```{r explore_results}
+
+library(dplyr)
+
+# Explore numbers of cases
+min(variants_assoc.df$N_Cases)
+max(variants_assoc.df$N_Cases)
+hist(variants_assoc.df$N_Cases)
+
+# Explore frequencies of variants
+min(variants_assoc.df$Alt_Alleles_Count)
+max(variants_assoc.df$Alt_Alleles_Count)
+x <- sort(table(variants_assoc.df$Alt_Alleles_Count), decreasing = TRUE)
+x[1:10]
+x <- variants_assoc.df %>% select(Alt_Alleles_Count) %>% filter(Alt_Alleles_Count<10) 
+hist(x[,1])
+
+# Variants with strongest risk association
+x <- variants_assoc.df %>% filter(Effect > 0) %>% arrange(P_LRT) %>% head(10)
+x
+x <- as.vector(x[,1])
+variants.df[x,] %>% select(VarID, SYMBOL, TYPE, Consequence, CLIN_SIG)
+variants.df[x,] %>% select(VarID, SYMBOL, EUR_MAF_Fraction, AF_UBC, AF_CBC)
+variants.df[x,] %>% select(VarID, SYMBOL, EUR_MAF_Fraction, AF_USBC, AF_CFBC)
+
+# Variants with strongest protective association
+x <- variants_assoc.df %>% filter(Effect < 0) %>% arrange(P_LRT) %>% head(10)
+x
+x <- as.vector(x[,1])
+variants.df[x,] %>% select(VarID, SYMBOL, TYPE, Consequence, CLIN_SIG)
+variants.df[x,] %>% select(VarID, SYMBOL, EUR_MAF_Fraction, AF_UBC, AF_CBC)
+variants.df[x,] %>% select(VarID, SYMBOL, EUR_MAF_Fraction, AF_USBC, AF_CFBC)
+
+# No significance after Bernulli correction
+17310 * 7.07e-05
+
+# Clean-up
+rm(x)
+
+```
+
+# Trends for the "top"" variants, as compared with 1k EUR mafs
+
+The only "trend"" for "risk" variants would be for NPHP3, which has no known connections with BC etc. 
+
+There was a variant in GEN1, which is associated with homologous recombination and DNA repair.
+The variant is common (10%); so it would be detected earlier in GWAS if it was real ??
+Common GEN1 variants were not found to be associated with BC (PIMD 20512659)
+On the other hand, overrepresentation of GEN1 in CBC was reported for one
+of variants earlier with EI (PIMD 23104382)
+
+None of "protective" variants showed a meaningful trend when compared with 1k EUR mafs. 
+
+No variant was significant after Bernulli correction (x 17,310)
 
 # save_data
 
@@ -230,8 +292,8 @@ genotypes.mx[1:7, 1:5]
 dim(phenotypes.df)
 phenotypes.df[1:7, 1:5]
 
-dim(variants_assoc.mx)
-variants_assoc.mx[1:7,]
+dim(variants_assoc.df)
+variants_assoc.df[1:7,]
 
 dim(variants.df)
 variants.df[1:7,1:5]

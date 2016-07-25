@@ -1,0 +1,75 @@
+Job id: 3133888
+Job name: wc_07
+Allocated node: sand-5-80
+Initial working folder:
+/scratch/medgen/scripts/rscripts_05.16/scripts
+
+ ------------------ Output ------------------ 
+
+Started: 24Jul2016_21:27:46
+
+R version 3.2.2 (2015-08-14) -- "Fire Safety"
+Copyright (C) 2015 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library('rmarkdown',lib='/scratch/medgen/tools/r/R-3.2.2/lib64/R/library/')
+> render('/scratch/medgen/scripts/rscripts_05.16/scripts/s08_SKAT_glm_feb2016.Rmd',output_file='/scratch/medgen/scripts/rscripts_05.16/scripts/s08_SKAT_glm_feb2016.html')
+
+
+processing file: s08_SKAT_glm_feb2016.Rmd
+  |                                                                         |                                                                 |   0%  |                                                                         |......                                                           |  10%
+  ordinary text without R code
+
+  |                                                                         |.............                                                    |  20%
+label: start_section
+  |                                                                         |....................                                             |  30%
+  ordinary text without R code
+
+  |                                                                         |..........................                                       |  40%
+label: load_and_check_data
+  |                                                                         |................................                                 |  50%
+  ordinary text without R code
+
+  |                                                                         |.......................................                          |  60%
+label: load_SKAT_accessory_functions (with options) 
+List of 1
+ $ echo: logi FALSE
+
+  |                                                                         |..............................................                   |  70%
+  ordinary text without R code
+
+  |                                                                         |....................................................             |  80%
+label: calculate_associations_per_gene (with options) 
+List of 2
+ $ warning: logi FALSE
+ $ results: chr "hide"
+
+  |                                                                         |..........................................................       |  90%
+  ordinary text without R code
+
+  |                                                                         |.................................................................| 100%
+label: final_section
+
+output file: s08_SKAT_glm_feb2016.knit.md
+
+/usr/local/Cluster-Apps/pandoc/1.15.2.1/bin/pandoc +RTS -K512m -RTS s08_SKAT_glm_feb2016.utf8.md --to html --from markdown+autolink_bare_uris+ascii_identifiers+tex_math_single_backslash-implicit_figures --output /scratch/medgen/scripts/rscripts_05.16/scripts/s08_SKAT_glm_feb2016.html --smart --email-obfuscation none --self-contained --standalone --section-divs --template /scratch/medgen/tools/r/R-3.2.2/lib64/R/library/rmarkdown/rmd/h/default.html --variable 'theme:bootstrap' --include-in-header /tmp/RtmpXIf6wv/rmarkdown-str181d445240d2d.html --mathjax --variable 'mathjax-url:https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' --no-highlight --variable highlightjs=/scratch/medgen/tools/r/R-3.2.2/lib64/R/library/rmarkdown/rmd/h/highlight 
+
+Output created: s08_SKAT_glm_feb2016.html
+There were 50 or more warnings (use warnings() to see the first 50)
+> 
+> 
+/var/spool/slurm/slurmd/job3133888/slurm_script: line 73: unexpected EOF while looking for matching `"'

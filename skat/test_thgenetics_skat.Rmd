@@ -1,0 +1,122 @@
+---
+title: "testing_skat_thgenetics"
+author: "AL"
+date: "July 18, 2016"
+output: html_document
+---
+
+# Summary
+
+SKAT produces expected results.  
+thgenetics always produces p=0, which is wrong and confusing
+
+# start_section
+
+```{r }
+
+Sys.time()
+rm(list=ls())
+
+```
+
+# generate_random_dataset
+
+500 cases x 5 varianrs (AF~5%)
+
+```{r generate_random_dataset}
+
+c1 <- as.numeric(runif(100)>0.5)
+c2 <- 100*runif(100)
+covariates.rand <- cbind(c1,c2)
+
+a <- as.numeric(runif(500) > 0.96)
+b <- as.numeric(runif(500) > 0.99)
+genotypes.rand <- matrix(a+b, ncol=5)
+
+phenotypes.rand <- as.numeric(runif(100)>0.5)
+
+rm(a,b,c1,c2)
+
+```
+
+# generate_biased_dataset
+
+500 cases x 5 varianrs (AF~5%)
+
+```{r generate_biased_dataset}
+
+c1 <- as.numeric(runif(100)>0.5)
+c2 <- 100*runif(100)
+covariates.bias <- cbind(c1,c2)
+
+a <- as.numeric(runif(500) > 0.96)
+b <- as.numeric(runif(500) > 0.99)
+genotypes.bias <- matrix(a+b, ncol=5)
+
+phenotypes.bias <- as.numeric(runif(100)>0.5)
+
+# Introduce bias
+g <- apply(genotypes.bias,1,sum)
+1 -> phenotypes.bias[g > 0]
+
+rm(a,b,c1,c2,g)
+
+```
+
+# test_skat_rand
+
+```{r test_skat_rand}
+
+library(SKAT)
+
+# SKAT null models
+skat.null.rand <- SKAT_Null_Model(
+  phenotypes.rand ~ covariates.rand, 
+  Adjustment = FALSE, 
+  out_type="D")
+
+skat.test.rand <- SKATBinary(
+  genotypes.rand, 
+  skat.null.rand)
+
+skat.test.rand$p.value
+
+```
+
+# test_skat_bias
+
+```{r test_skat_bias}
+
+skat.null.bias <- SKAT_Null_Model(
+  phenotypes.bias ~ covariates.bias, 
+  Adjustment = FALSE, 
+  out_type="D")
+
+skat.test.bias <- SKATBinary(
+  genotypes.bias, 
+  skat.null.bias)
+
+skat.test.bias$p.value
+
+```
+
+# test_thgenetics
+
+```{r test_thgenetics}
+
+library(thgenetics)
+
+rareGeneTest(genotypes.rand, phenotypes.rand)
+
+rareGeneTest(genotypes.bias, phenotypes.bias)
+
+```
+
+# final_section
+
+```{r final_section}
+
+sessionInfo()
+Sys.time()
+  
+```
